@@ -168,7 +168,7 @@ const EX = {
   cablerow:['Sittande kabelrodd','Rygg','Rak överkropp, dra mot naveln och nyp ihop skulderbladen.'],
   machrow:['Bröststödd rodd (maskin)','Rygg','Bröstet mot stödet, dra armbågarna bakåt och pausa 1 sek.'],
   straightarm:['Raka armar pulldown','Rygg','Nästan raka armar, dra stången mot låren med latsen.'],
-  pulldownclose:['Latsdrag med smalt grepp','Rygg','Neutralt eller smalt grepp, dra mot övre bröstet.'],
+  pulldownclose:['Latsdrag med smalt / neutralt grepp','Rygg','Neutralt eller smalt grepp, dra mot övre bröstet.'],
   shrug:['Hantelshrugs','Rygg (trapezius)','Lyft axlarna rakt upp mot öronen, paus i toppen. Rulla inte axlarna.'],
   backext:['Ryggresningar','Ländrygg','Kontrollerad rörelse upp till rak linje. Överextendera inte.'],
   // bröst
@@ -206,16 +206,26 @@ const EX = {
   russian:['Russian twist','Sneda magmuskler','Vrid bålen, inte bara armarna. Ange reps per sida.'],
   bicycle:['Bicycle crunch','Mage','Långsamt, armbåge mot motsatt knä.'],
   legraise:['Liggande benlyft','Mage','Ländryggen mot golvet, sänk benen kontrollerat.'],
-  mountain:['Mountain climbers','Mage / bål','Händerna under axlarna, kontrollerat knädrag. Ange reps per ben.']
+  mountain:['Mountain climbers','Mage / bål','Händerna under axlarna, kontrollerat knädrag. Ange reps per ben.'],
+  // 12-veckorsprogrammet
+  lyingcurl:['Liggande lårcurl','Baksida lår','Höften i bänken, dra hälarna mot sätet och sänk långsamt.'],
+  seatedcurl:['Sittande lårcurl','Baksida lår','Ryggen mot stödet, dra hälarna ned och bak, kontrollerad återgång.'],
+  lungedb:['Utfallsteg med hantlar','Ben','Långa steg, rak överkropp. Ange steg per ben.'],
+  suprow:['Sittande kabelrodd, underhandsgrepp','Rygg','Supinerat grepp, dra mot naveln med armbågarna nära kroppen för strikt ryggkontakt.'],
+  vrow:['Kabelrodd med brett V-grepp','Mellanrygg','Dra mot bröstet, för ihop skulderbladen och pausa 1 sek.'],
+  widepd:['Latsdrag med brett grepp','Rygg','Dra stången mot övre bröstet, luta bakåt lite grann, svinga inte.'],
+  flatfly:['Hantelflyes på plan bänk','Bröst','Lätt böjda armbågar, känn stretchen i bröstet. Minimal tricepsaktivering.'],
+  crossover:['Cable crossovers','Bröst','Dra kablarna ihop framför bröstet och pressa ihop i mitten. Noll triceps.'],
+  seatedleg:['Sittande benlyft','Mage','Sitt på bänkkanten, dra upp knän mot bröstet kontrollerat.']
 };
 
 /* ---------- Normalvecka (mån–fre, helkropp över veckan, 30–40 min) ---------- */
 /* [id, set, reps, vila (s)] */
 const NORMAL = {
   mon:{title:'Bröst & triceps', ex:[['chest',3,'8–10',120],['inclpress',3,'8–12',90],['flyes',3,'12–15',60],['rope',3,'10–12',75],['ohext',3,'10–12',75]]},
-  tue:{title:'Rygg & biceps', ex:[['pulldown',3,'8–12',90],['row',3,'8–10',90],['dbrow',3,'10',75],['facepull',3,'12–15',60],['inclcurl',3,'10–12',75]]},
+  tue:{title:'Rygg & biceps', ex:[['pulldown',3,'8–12',90],['row',3,'8–10',90],['dbrow',3,'10',75],['facepull',3,'12–15',60],['inclcurl',3,'10–12',75],['hammer',3,'10–12',60]]},
   wed:{title:'Ben & mage', ex:[['squat',3,'8–10',120],['rdl',3,'8–10',120],['lunge',3,'10',75],['calf',3,'12–15',60],['abs',3,'12–20',60]]},
-  thu:{title:'Axlar & armar', ex:[['shpress',3,'8–10',90],['latraise',3,'12–15',60],['reardelt',3,'12–15',60],['bbcurl',3,'8–10',90],['french',3,'10–12',75],['hammer',3,'10–12',75]]},
+  thu:{title:'Axlar & bål', ex:[['shpress',3,'8–10',90],['latraise',3,'12–15',60],['reardelt',3,'12–15',60],['hangleg',3,'8–12',75]]},
   fri:{title:'Ben, rygg & bål', ex:[['deadlift',3,'5–6',150],['row',3,'10',90],['splitsq',3,'8–10',90],['hipthrust',3,'10–12',90],['plank',3,'30–60 s',60]]}
 };
 function buildNormal(d){
@@ -356,6 +366,114 @@ INT_DEFS.forEach(def=>{
   };
 });
 
+/* ---------- 12-veckors blockperiodisering (3 block à 4 veckor, startar om efter vecka 12) ----------
+   Block 1 Armar (v1–4) · Block 2 Ben & mage (v5–8) · Block 3 Rygg & bröst (v9–12) · därefter Block 1 igen.
+   Övning: [id, set, reps, vila (s), flaggor: h=tungt baslyft, m=underhåll på fokusdag, l=lätt vikt, superset-bokstav] */
+const P12_BLOCKS = [
+ {n:1,name:'Armar',intro:'Block 1 – Armar. Fokus: maximal hypertrofi för biceps och triceps. Resten underhålls.',
+  wk:{1:'Vecka 1: RIR 2 (stanna 2 repetitioner före teknisk failure).',2:'Vecka 2: RIR 1 (öka vikten något, stanna 1 rep före failure).',3:'Vecka 3: failure – kör till absolut failure på sista setet. På fredagens sista set körs dropset: sänk vikten 30 % och kör till failure igen.',4:'Vecka 4 (DELOAD): halvera vikterna och kör endast 2 set per övning på armpassen. Ingen axelträning.'},
+  days:{
+   mon:{f:1,title:'Pass A – Tung styrka armar + axlar',ex:[['bbcurl',4,'6–8',120],['cgbench',4,'6–8',120,'h'],['dbcurl',3,'8',90],['ohext',3,'8',90],['shpress',3,'8',90,'m'],['latraise',3,'10–12',60,'m']]},
+   tue:{f:0,title:'Pass B – Ben & mage (underhåll)',ex:[['squat',3,'8',120],['rdl',3,'8',120],['calf',3,'12–15',60],['hangleg',3,'max',60]]},
+   wed:{f:1,title:'Pass C – Volym & pump armar',ex:[['inclcurl',3,'10–12',75],['rope',3,'10–12',75],['hammer',3,'10–12',60],['french',3,'10–12',75]]},
+   thu:{f:0,title:'Pass D – Rygg & bröst (underhåll)',ex:[['bench',3,'8',120],['cablerow',3,'8',90],['pulldown',3,'10',90]]},
+   fri:{f:1,title:'Pass E – Isolering & chock armar (superset)',ex:[['cablecurl',3,'12–15',75,'','A'],['bar',3,'12–15',75,'','A'],['scott',3,'12–15',75,'','B'],['kick',3,'12–15',75,'','B']]}}},
+ {n:2,name:'Ben & mage',intro:'Block 2 – Ben & mage. Fokus: underkroppsstyrka och volym samt djup magmuskulatur. Armar underhålls med extremt låg volym.',
+  wk:{1:'Vecka 5: RIR 2 på alla benövningar.',2:'Vecka 6: RIR 1 (öka vikten på knäböj och benpress).',3:'Vecka 7: failure – kör till failure på sista setet i benpress och lårcurl. Benspark avslutas med ett trippelt dropset.',4:'Vecka 8 (DELOAD): halvera vikterna på alla benövningar och kör endast 2 set per övning.'},
+  days:{
+   mon:{f:1,title:'Pass A – Tung styrka ben + mage',ex:[['squat',4,'6–8',120,'h'],['rdl',4,'6–8',120,'h'],['seatedcalf',4,'10–12',60],['abwheel',3,'max',60]]},
+   tue:{f:0,title:'Pass B – Överkropp (underhåll)',ex:[['dbpress',3,'8',90],['bbrow',3,'8',90],['shpress',2,'10',90]]},
+   wed:{f:1,title:'Pass C – Volym & pump ben',ex:[['legpress',3,'10–12',90],['lyingcurl',3,'10–12',75],['legext',3,'12–15',60],['calf',3,'15',45]]},
+   thu:{f:0,title:'Pass D – Axlar & armar (underhåll)',ex:[['latraise',3,'10–12',60],['bbcurl',2,'10',60,'l'],['bar',2,'10',60,'l']]},
+   fri:{f:1,title:'Pass E – Chock & utmattning ben + mage',ex:[['lungedb',3,'12 steg/ben',90],['seatedcurl',3,'12–15',75],['plank',3,'max tid',60],['cablecrunch',3,'15',60]]}}},
+ {n:3,name:'Rygg & bröst',intro:'Block 3 – Rygg & bröst. Fokus: bredd och tjocklek för överkroppen. Armarna får optimalt underhåll sekundärt via tunga baslyft. Ingen isolerad armträning utförs.',
+  wk:{1:'Vecka 9: RIR 2 på bröst- och ryggövningar.',2:'Vecka 10: RIR 1 (lägg på mer vikt i bänkpress och skivstångsrodd).',3:'Vecka 11: failure – kör sista setet i bänkpress och latsdrag till failure. Fredagens kabelövningar körs till total utmattning.',4:'Vecka 12 (DELOAD): kör passen mycket lätt med halverad volym för att nollställa kroppen inför nästa cykel.'},
+  days:{
+   mon:{f:1,title:'Pass A – Bröstfokus + triceps sekundärt',ex:[['bench',4,'6–8',120,'h'],['inclpress',3,'8–10',90],['machchest',3,'12',75],['seatedleg',3,'max',60,'m']]},
+   tue:{f:0,title:'Pass B – Ben & mage (underhåll)',ex:[['legpress',3,'8',120],['seatedcurl',3,'10',90],['calf',3,'12',60]]},
+   wed:{f:1,title:'Pass C – Ryggfokus + biceps sekundärt',ex:[['bbrow',4,'6–8',120],['widepd',3,'8–10',90],['vrow',3,'10–12',75],['backext',3,'12',60]]},
+   thu:{f:0,title:'Pass D – Axlar & mage (underhåll)',ex:[['latraise',4,'10–12',60],['facepull',3,'12–15',60],['plank',3,'max tid',60]]},
+   fri:{f:1,title:'Pass E – Volym & pump överkropp (superset)',ex:[['flatfly',3,'10–12',75,'','A'],['suprow',3,'10–12',75,'','A'],['crossover',3,'12–15',75,'','B'],['pulldownclose',3,'12–15',75,'','B']]}}}
+];
+function groupSS(list){
+  const blocks=[];let i=0;
+  while(i<list.length){
+    const x=list[i];
+    if(x.ss){const g=[];while(i<list.length&&list[i].ss===x.ss){list[i].tag=x.ss+(g.length+1);g.push(list[i]);i++;}blocks.push(g);}
+    else{blocks.push([x]);i++;}
+  }
+  return blocks;
+}
+function buildP12(wk,d){
+  const bi=Math.floor((wk-1)/4), w=((wk-1)%4)+1, B=P12_BLOCKS[bi], day=B.days[d];
+  const label='12-veckors · Block '+B.n+': '+B.name+' · vecka '+wk+' av 12';
+  const focus=B.intro+' '+B.wk[w];
+  const deloadAll=(bi===2&&w===4);
+  let list=day.ex.map(r=>{const fl=r[4]||'',m=fl.includes('m')||!day.f;return {id:r[0],sets:r[1],reps:r[2],rest:r[3],heavy:fl.includes('h'),light:fl.includes('l'),maint:m,arm:!m,ss:r[5]||null};});
+  const notes=[];
+  if(w===4){
+    if(deloadAll){
+      list=list.map(x=>Object.assign({},x,{sets:Math.max(1,Math.ceil(x.sets/2)),rest:60,deload:true,rir:'RIR 4+ – ska kännas lätt'}));
+      notes.push('Kör passet mycket lätt med halverad volym (ca 50 % av vikterna och halva seten).');
+    } else {
+      if(bi===0)list=list.filter(x=>!(day.f&&x.maint));
+      list=list.map(x=>x.arm?Object.assign({},x,{sets:2,rest:60,deload:true,rir:'RIR 4+ – ska kännas lätt'}):Object.assign({},x,{rir:x.light?'Lätt vikt':'RIR 2'}));
+      notes.push(day.f?((bi===0&&d==='mon'?'Ingen axelträning i dag. ':'')+'Halvera vikterna (ca 50 % av vecka 3) och kör endast 2 set per övning.'):'Underhåll som vanligt.');
+    }
+  } else {
+    list.forEach(x=>{
+      if(!x.arm){x.rir=x.light?'Lätt vikt':'RIR 2';return;}
+      x.rir=w===1?'RIR 2':'RIR 1';
+      const failIt=()=>{x.fail=true;x.rir=x.heavy?'Sista setet till failure – bara med spotter/pins (avbryt hellre ett rep tidigt)':'RIR 1, sista setet till failure';};
+      if(bi===0){
+        if(d==='wed')x.tempo='3 sek i negativ fas (sänkande)';
+        if(w===3){ if(d==='fri'){x.drop=2;x.rir='RIR 1 – set 3: failure + dropset (−30 %)';} else failIt(); }
+      }
+      if(bi===1&&w===3){
+        if(x.id==='legpress'||x.id==='lyingcurl'||x.id==='seatedcurl')failIt();
+        if(x.id==='legext'){x.drop=x.sets-1;x.drops=3;x.rir='Set 3: till failure + trippelt dropset (sänk ca 25 % per steg)';}
+      }
+      if(bi===2&&w===3){
+        if(x.id==='bench'||x.id==='widepd')failIt();
+        if(x.id==='suprow'||x.id==='crossover'||x.id==='pulldownclose'){x.failAll=true;x.rir='Total utmattning – alla set till failure';}
+      }
+    });
+    if(bi===0){
+      if(w===2&&d==='mon')notes.push('Öka vikten något.');
+      if(d==='wed')notes.push('Tempo: 3 sekunder i den negativa (sänkande) fasen.');
+      if(w===3&&d==='mon')notes.push('Sista setet av varje armövning till failure (smal bänkpress bara med spotter/pins).');
+      if(w===3&&d==='wed')notes.push('Sista setet av varje övning till failure.');
+      if(w===3&&d==='fri')notes.push('Sista setet (set 3) körs som dropset: sänk vikten 30 % och kör till failure igen.');
+      if(d==='fri')notes.push('Kör A1 direkt följt av A2, vila sedan. Samma för B1/B2.');
+    }
+    if(bi===1){
+      if(w===2&&d==='mon')notes.push('Öka vikten på knäböj.');
+      if(w===2&&d==='wed')notes.push('Öka vikten på benpress.');
+      if(w===3&&d==='wed')notes.push('Sista setet i benpress och liggande lårcurl till failure. Benspark avslutas med ett trippelt dropset.');
+      if(w===3&&d==='fri')notes.push('Sista setet i sittande lårcurl till failure.');
+    }
+    if(bi===2){
+      if(w===2&&d==='mon')notes.push('Lägg på mer vikt i bänkpress.');
+      if(w===2&&d==='wed')notes.push('Lägg på mer vikt i skivstångsrodd.');
+      if(w===3&&d==='mon')notes.push('Sista setet i bänkpress till failure (bara med spotter/pins).');
+      if(w===3&&d==='wed')notes.push('Sista setet i latsdrag med brett grepp till failure.');
+      if(d==='thu')notes.push('Inga tunga pressar för att spara triceps inför fredagen.');
+      if(d==='fri'){notes.push('Mekanisk utmattning för rygg/bröst. Högre reps skonar armlederna. Kör A1 direkt följt av A2, vila sedan. Samma för B1/B2.');if(w===3)notes.push('Kabelövningarna (A2, B1, B2) körs till total utmattning.');}
+    }
+  }
+  return {title:day.title,label,focus,note:notes.join(' '),blocks:groupSS(list),deload:w===4&&(deloadAll||!!day.f)};
+}
+BLOCKS.p12={
+  name:'12-veckors blockperiodisering', weeks:12, cycle:true,
+  desc:'3 block à 4 veckor: Block 1 Armar, Block 2 Ben & mage, Block 3 Rygg & bröst. Varje block har 3 intensiva veckor och 1 deload. Efter vecka 12 startar du om på Block 1 (armarna har då vilat i 8 veckor).',
+  weekName:wk=>{const bi=Math.floor((wk-1)/4);return 'Block '+(bi+1)+' '+P12_BLOCKS[bi].name+' · '+['Introduktion','Toppning','Chockfas','Deload'][(wk-1)%4];},
+  focusFor:wk=>P12_BLOCKS[Math.floor((wk-1)/4)].wk[((wk-1)%4)+1],
+  previewWeeks:[1,5,9],
+  shocks:[{g:'arms',from:0,to:4},{g:'legs',from:4,to:8},{g:'core',from:4,to:8},{g:'back',from:8,to:12},{g:'chest',from:8,to:12}],
+  build:buildP12
+};
+INT_DEFS.forEach(def=>{BLOCKS[def.id].shocks=[{g:def.id,from:0,to:4}];});
+
 function planFor(key){
   const p=String(key).split(':');
   if(p[0]==='n'&&NORMAL[p[1]])return buildNormal(p[1]);
@@ -421,10 +539,33 @@ function saveCfg(){try{localStorage.setItem(CKEY,JSON.stringify(cfg));}catch(e){
 function blockAt(ds){
   for(const b of S.blocks){
     if(b.del||!BLOCKS[b.type])continue;
-    const def=BLOCKS[b.type], n=diffDays(ds,b.start);
-    if(n>=0&&n<def.weeks*7)return {b,def,week:Math.floor(n/7)+1,dow:n%7};
+    const def=BLOCKS[b.type], n=diffDays(ds,b.start), total=def.weeks*7;
+    if(n<0)continue;
+    if(n<total)return {b,def,week:Math.floor(n/7)+1,dow:n%7,round:1};
+    if(def.cycle&&b.repeat){const m=n%total;return {b,def,week:Math.floor(m/7)+1,dow:m%7,round:Math.floor(n/total)+1};}
   }
   return null;
+}
+function blockEnd(b){const def=BLOCKS[b.type];return def.cycle&&b.repeat?'9999-12-31':addDays(b.start,def.weeks*7);}
+const GN={arms:'armar',back:'rygg',chest:'bröst',legs:'ben',core:'bål',shoulders:'axlar'};
+function shockWindows(b,cycles){
+  const def=BLOCKS[b.type],out=[],total=def.weeks*7,n=(def.cycle&&b.repeat)?(cycles||3):1;
+  for(let c=0;c<n;c++)(def.shocks||[]).forEach(sh=>out.push({g:sh.g,from:addDays(b.start,c*total+sh.from*7),to:addDays(b.start,c*total+sh.to*7)}));
+  return out;
+}
+function allWindows(){const a=[];S.blocks.filter(b=>!b.del&&BLOCKS[b.type]).forEach(b=>shockWindows(b,3).forEach(w=>a.push(w)));return a;}
+/* Senor, leder och CNS behöver minst 6–8 veckor mellan chockfaser för samma muskelgrupp */
+function restGuard(nb){
+  const ow=allWindows(),worst={};
+  shockWindows(nb,3).forEach(a=>ow.forEach(o=>{
+    if(a.g!==o.g)return;
+    let gap;
+    if(a.from>=o.to)gap=diffDays(a.from,o.to)/7;else if(o.from>=a.to)gap=diffDays(o.from,a.to)/7;else gap=-1;
+    if(worst[a.g]===undefined||gap<worst[a.g])worst[a.g]=gap;
+  }));
+  const tooShort=[],okButShort=[];
+  Object.keys(worst).forEach(g=>{const w=worst[g];if(w<6)tooShort.push(GN[g]+' ('+(w<0?'överlappar':Math.floor(w)+' veckor')+')');else if(w<8)okButShort.push(GN[g]);});
+  return {tooShort,okButShort};
 }
 function defaultPlan(ds){
   const dow=dowOf(ds), bk=blockAt(ds);
@@ -437,7 +578,7 @@ function planOptions(ds){
   const o=[];
   DAYS.slice(0,5).forEach(d=>o.push(['n:'+d,'Normal · '+DN[d]+' – '+NORMAL[d].title]));
   const bk=blockAt(ds);
-  if(bk)DAYS.slice(0,5).forEach(d=>{const k='b:'+bk.b.type+':'+bk.week+':'+d;o.push([k,'Intensiv v'+bk.week+' · '+DN[d]+' – '+planFor(k).title]);});
+  if(bk)DAYS.slice(0,5).forEach(d=>{const k='b:'+bk.b.type+':'+bk.week+':'+d;o.push([k,'Period v'+bk.week+' · '+DN[d]+' – '+planFor(k).title]);});
   o.push(['w:sat','Kondition / vila']);
   return o;
 }
@@ -478,10 +619,11 @@ function ph(x,i){
   return {w:w,r:l.r};
 }
 const e1=(w,r)=>w>0&&r>0?w*(1+r/30):0;
+function dropsOf(x){const o=[];[['dw','dr'],['dw2','dr2'],['dw3','dr3']].forEach(a=>{if(x[a[0]]!==undefined&&x[a[0]]!==''&&x[a[1]]!==undefined&&x[a[1]]!=='')o.push({w:+x[a[0]],r:+x[a[1]]});});return o;}
 function bestE1(exId,exclude){
   let b=0;
   Object.values(S.sessions).forEach(s=>{if(s.id===exclude||!s.sets||!s.sets[exId])return;
-    s.sets[exId].forEach(x=>{if(x.done){b=Math.max(b,e1(+x.w,+x.r));if(x.dw!==undefined&&x.dw!==''&&x.dr)b=Math.max(b,e1(+x.dw,+x.dr));}});});
+    s.sets[exId].forEach(x=>{if(x.done){b=Math.max(b,e1(+x.w,+x.r));dropsOf(x).forEach(dd=>{b=Math.max(b,e1(dd.w,dd.r));});}});});
   return b;
 }
 
@@ -495,6 +637,12 @@ function render(){
 }
 
 /* ---------- Träna ---------- */
+const BI=['bbcurl','dbcurl','inclcurl','hammer','cablecurl','scott'], TRI=['rope','bar','ohext','french','kick','cgbench'];
+function armPlanSets(mon){
+  let bi=0,tri=0,inten=false;
+  for(let i=0;i<5;i++){const key=planKeyFor(addDays(mon,i));if(key[0]==='b')inten=true;planFor(key).blocks.flat().forEach(x=>{if(BI.includes(x.id))bi+=x.sets;if(TRI.includes(x.id))tri+=x.sets;});}
+  return {bi,tri,inten};
+}
 function restLabel(x){return x.restTxt||(x.rest>=120?(x.rest/60)+' min':x.rest+' s');}
 function kr(T){return T.k2&&T.k2>T.k?fmtN(T.k)+'–'+fmtN(T.k2):fmtN(T.k);}
 function cardioMins(ds){const d=S.cardio[ds];return d?d.entries.filter(e=>!e.del).reduce((a,e)=>a+(+e.m||0),0):0;}
@@ -550,9 +698,9 @@ function viewTrain(){
 function setRow(x,i,s,sup){
   const v=(s&&s.sets[x.id]&&s.sets[x.id][i])||{w:'',r:'',done:false};
   const p=ph(x,i);
-  const isFail=x.fail&&i===x.sets-1, isDrop=x.drop===i;
+  const isFail=x.failAll||(x.fail&&i===x.sets-1), isDrop=x.drop===i;
   const lab=sup?x.tag:String(i+1);
-  const chips=(isFail?'<span class="chip a">failure</span>':'')+(isDrop?'<span class="chip a">dropset</span>':'');
+  const chips=(isFail?'<span class="chip a">failure</span>':'')+(isDrop?'<span class="chip a">'+((x.drops||1)>1?'trippelt dropset':'dropset')+'</span>':'');
   let h=`<div class="setwrap"><div class="row${v.done?' done':''}"><span class="lab">${lab}</span>
     <input type="text" inputmode="decimal" class="w" data-ex="${x.id}" data-i="${i}" data-f="w" value="${v.w===''?'':esc(v.w)}" placeholder="${p.w!==undefined&&p.w!==''?esc(p.w):'kg'}" aria-label="Vikt set ${i+1}">
     <span class="x">×</span>
@@ -560,57 +708,80 @@ function setRow(x,i,s,sup){
     <button class="chk${v.done?' on':''}" data-act="chk" data-ex="${x.id}" data-i="${i}" aria-label="Klart">✓</button></div>`;
   if(chips)h+=`<div style="margin:0 0 2px 36px">${chips}</div>`;
   if(isDrop){
-    const dph=v.w!==''?Math.round(v.w*0.7*2)/2:'';
-    h+=`<div class="row drop"><span class="lab">↓</span>
-    <input type="text" inputmode="decimal" class="dw" data-ex="${x.id}" data-i="${i}" data-f="dw" value="${v.dw===undefined||v.dw===''?'':esc(v.dw)}" placeholder="${dph!==''?esc(dph):'−30 %'}" aria-label="Dropset vikt">
-    <span class="x">×</span>
-    <input type="text" inputmode="numeric" data-ex="${x.id}" data-i="${i}" data-f="dr" value="${v.dr===undefined||v.dr===''?'':esc(v.dr)}" placeholder="reps" aria-label="Dropset reps"><span></span></div>`;
+    const nd=x.drops||1;
+    for(let k=1;k<=nd;k++){
+      const fw=k===1?'dw':'dw'+k, fr=k===1?'dr':'dr'+k, pw=k===1?v.w:v[k===2?'dw':'dw2'];
+      const dph=pw!==''&&pw!==undefined?Math.round(pw*(nd>1?0.75:0.7)*2)/2:'';
+      h+=`<div class="row drop"><span class="lab">↓${nd>1?k:''}</span>
+      <input type="text" inputmode="decimal" class="dw" data-ex="${x.id}" data-i="${i}" data-f="${fw}" value="${v[fw]===undefined||v[fw]===''?'':esc(v[fw])}" placeholder="${dph!==''?esc(dph):(nd>1?'−25 %':'−30 %')}" aria-label="Dropset ${k} vikt">
+      <span class="x">×</span>
+      <input type="text" inputmode="numeric" data-ex="${x.id}" data-i="${i}" data-f="${fr}" value="${v[fr]===undefined||v[fr]===''?'':esc(v[fr])}" placeholder="reps" aria-label="Dropset ${k} reps"><span></span></div>`;
+    }
   }
   return h+`</div>`;
 }
 function summary(s){
   if(!s)return 'Inget loggat än.';
   let sets=0,vol=0;
-  Object.values(s.sets).forEach(a=>a.forEach(x=>{if(x.done){sets++;vol+=(+x.w||0)*(+x.r||0);if(x.dw&&x.dr)vol+=(+x.dw)*(+x.dr);}}));
+  Object.values(s.sets).forEach(a=>a.forEach(x=>{if(x.done){sets++;vol+=(+x.w||0)*(+x.r||0);dropsOf(x).forEach(dd=>{vol+=dd.w*dd.r;});}}));
   return `${sets} set klara · volym ${fmtN(vol)} kg`;
 }
 
 /* ---------- Schema ---------- */
 function blockStatus(b){
-  const def=BLOCKS[b.type]; if(!def)return 'Okänd';
-  const end=addDays(b.start,def.weeks*7), t=today();
-  if(t<b.start)return 'Planerad';
-  if(t>=end)return 'Klar';
-  return 'Pågår · vecka '+(Math.floor(diffDays(t,b.start)/7)+1)+' av '+def.weeks;
+  const def=BLOCKS[b.type];if(!def)return 'Okänd';
+  const t=today();if(t<b.start)return 'Planerad';
+  const n=diffDays(t,b.start),total=def.weeks*7;
+  if(n<total)return 'Pågår · vecka '+(Math.floor(n/7)+1)+' av '+def.weeks;
+  if(def.cycle&&b.repeat)return 'Pågår · varv '+(Math.floor(n/total)+1)+', vecka '+(Math.floor((n%total)/7)+1)+' av '+def.weeks;
+  return 'Klar';
 }
 function viewPlan(){
   const t=today(), cur=mondayISO(t);
   let h=`<h2>Schema</h2><div class="daynav" style="margin-top:10px"><button data-act="swprev" aria-label="Föregående vecka">‹</button><div class="mid"><b>Vecka ${isoWeek(sw)}</b><br><small>${esc(fd(sw))} – ${esc(fd(addDays(sw,6)))}</small></div><button data-act="swnext" aria-label="Nästa vecka">›</button></div>`;
   if(sw!==cur)h+=`<div style="text-align:center;margin:6px 0"><button class="ghost" data-act="swtoday">Den här veckan</button></div>`;
   { const bkw=blockAt(sw);
-    h+=`<div class="banner">Träningsläge den här veckan: <b>${bkw?esc(BLOCKS[bkw.b.type].name)+' – vecka '+bkw.week+' av '+BLOCKS[bkw.b.type].weeks:'Normalvecka'}</b></div>`; }
+    h+=`<div class="banner">Träningsläge den här veckan: <b>${bkw?esc(BLOCKS[bkw.b.type].name)+' – vecka '+bkw.week+' av '+BLOCKS[bkw.b.type].weeks+(BLOCKS[bkw.b.type].weekName?' ('+esc(BLOCKS[bkw.b.type].weekName(bkw.week))+')':''):'Normalvecka'}</b></div>`;
+    const av=armPlanSets(sw);
+    h+=`<div class="banner">Armvolym (planerad): biceps <b>${av.bi}</b> · triceps <b>${av.tri}</b> set/vecka ${av.inten?'<span class="mute">(intensivperiod)</span>':((av.bi>10||av.tri>10||av.bi<6||av.tri<6)?'⚠ <span class="mute">grundschemat rekommenderar 6–10 set</span>':'✓ <span class="mute">inom 6–10 set</span>')}</div>`; }
   for(let i=0;i<7;i++){
     const ds=addDays(sw,i), P=planFor(planKeyFor(ds)), s=S.sessions['d'+ds], cm=cardioMins(ds);
     const mark=s&&s.finished?'✅':hasDone(s)?'◐':cm?'🏃':'';
     h+=`<button class="dayrow${ds===t?' cur':''}" data-act="open" data-d="${ds}"><span><b>${DN[DAYS[i]]}</b> ${esc(fd(ds))}<br><small>${esc(P.title)} · ${esc(P.label)}</small></span><span class="st">${mark}</span></button>`;
   }
   h+=`<details><summary>Så ser normalveckan ut</summary><ul>${DAYS.slice(0,5).map(d=>`<li><b>${DN[d]}:</b> ${esc(NORMAL[d].title)} – ${NORMAL[d].ex.map(r=>esc(EX[r[0]][0])).join(', ')}</li>`).join('')}<li><b>Lördag:</b> kondition eller vila</li><li><b>Söndag:</b> vila (eller lätt kondition)</li></ul></details>`;
-  h+=`<h3 class="sub">Normalvecka eller intensivperiod</h3><p class="mute" style="font-size:14px">Utan inplanerad period kör du normalveckan. Välj en intensivperiod (3 intensiva veckor + 1 deload) för en muskelgrupp, så ersätter den normalveckan måndag–fredag. Helgerna är kondition eller vila, och efter perioden är du tillbaka i normalveckan.</p>`;
+  h+=`<h3 class="sub">Normalvecka eller intensivperiod</h3><p class="mute" style="font-size:14px">Utan inplanerad period kör du normalveckan. Du kan i stället köra hela <b>12-veckors blockperiodisering</b> (Armar → Ben & mage → Rygg & bröst, som sedan börjar om), eller en enskild 4-veckors chockfas för en muskelgrupp. En period ersätter normalveckan måndag–fredag. Helgerna är kondition eller vila.</p>`;
   const bl=S.blocks.filter(b=>!b.del&&BLOCKS[b.type]).sort((a,b)=>a.start<b.start?-1:1);
   h+=`<div class="card">`;
   if(!bl.length)h+=`<p class="mute">Ingen period inplanerad. Du kör normalveckan.</p>`;
-  bl.forEach(b=>{const def=BLOCKS[b.type];h+=`<div class="entry"><span><b>${esc(def.name)}</b><br><small>${esc(fd(b.start))} – ${esc(fd(addDays(b.start,def.weeks*7-1)))}</small></span><span class="chip b">${esc(blockStatus(b))}</span><button data-act="bdel" data-id="${b.id}" aria-label="Ta bort period">✕</button></div>`;});
+  bl.forEach(b=>{
+    const def=BLOCKS[b.type];
+    h+=`<div class="entry"><span><b>${esc(def.name)}</b><br><small>${esc(fd(b.start))} – ${def.cycle&&b.repeat?'upprepas':esc(fd(addDays(b.start,def.weeks*7-1)))}</small></span><span class="chip b">${esc(blockStatus(b))}</span><button data-act="bdel" data-id="${b.id}" aria-label="Ta bort period">✕</button></div>`;
+    if(def.cycle)h+=`<div style="margin:0 0 8px"><button class="ghost" data-act="brep" data-id="${b.id}">Upprepa efter vecka ${def.weeks}: ${b.repeat?'på':'av'}</button></div>`;
+  });
   h+=`</div><div class="card"><h3>Starta en intensivperiod</h3>
-  <label class="f" style="margin-top:8px">Period<select id="bt">${Object.keys(BLOCKS).map(k=>`<option value="${k}">${esc(BLOCKS[k].name)} (${BLOCKS[k].weeks} veckor)</option>`).join('')}</select></label>
+  <label class="f" style="margin-top:8px">Period<select id="bt">${['p12'].concat(Object.keys(BLOCKS).filter(k=>k!=='p12')).map(k=>`<option value="${k}">${esc(BLOCKS[k].name)} (${BLOCKS[k].weeks} veckor)</option>`).join('')}</select></label>
   <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="ghost" data-act="bset" data-v="0">Denna måndag</button><button class="ghost" data-act="bset" data-v="7">Nästa måndag</button></div>
   <label class="f" style="margin-top:10px">Startdatum (en måndag)<input type="date" id="bs" value="${esc(addDays(cur,7))}"></label>
-  <button class="pri" data-act="badd" style="width:100%;margin-top:12px">Lägg till period</button></div>`;
-  Object.keys(BLOCKS).forEach(k=>{
-    const def=BLOCKS[k];
-    h+=`<details><summary>Förhandsvisa: ${esc(def.name)}</summary><p class="mute" style="font-size:14px">${esc(def.desc)}</p><p><b>Veckoschema (mån–fre)</b></p><ul>${DAYS.slice(0,5).map(d=>`<li><b>${DN[d]}:</b> ${esc(def.build(1,d).title)}</li>`).join('')}</ul><p><b>Intensitet vecka för vecka</b></p><ul>${[1,2,3,4].map(w=>`<li><b>Vecka ${w} (${esc(def.weekName(w))}):</b> ${esc(def.focusFor(w))}</li>`).join('')}</ul><p><b>Träningspassen</b></p>`;
-    DAYS.slice(0,5).forEach(d=>{
-      const P=def.build(1,d);
-      h+=`<p><b>${DN[d]}: ${esc(P.title)}</b></p><ul>${P.blocks.flat().map(x=>`<li>${x.tag?esc(x.tag)+'. ':''}${esc(EX[x.id][0])} – ${x.sets}×${esc(x.reps)} (vila ${esc(restLabel(x))})${x.maint?' <small>underhåll</small>':''}</li>`).join('')}</ul>`;
+  <label class="chk2"><input type="checkbox" id="brep" checked> Upprepa 12-veckorsprogrammet (starta om på Block 1 efter vecka 12)</label>
+  <button class="pri" data-act="badd" style="width:100%;margin-top:4px">Lägg till period</button></div>`;
+  { const wins=allWindows(),t2=today(),by={};
+    wins.forEach(w=>{const c=by[w.g];if(w.from<=t2){if(!c||c.from>t2||w.from>c.from)by[w.g]=w;}else if(!c)by[w.g]=w;});
+    const gs=Object.keys(by);
+    if(gs.length){
+      h+=`<div class="card"><h3>Vila mellan chockfaser</h3><p class="mute" style="font-size:14px">Senor, leder och nervsystem behöver minst 6–8 veckor mellan chockfaser för samma muskelgrupp. Under tiden kör du normalveckan eller andra block.</p>`;
+      gs.forEach(g=>{const w=by[g],up=w.from>t2;h+=`<div class="sess"><b>${esc(GN[g][0].toUpperCase()+GN[g].slice(1))}</b>: ${up?'planerad':'senaste'} chockfas ${esc(fd(w.from))} – ${esc(fd(addDays(w.to,-1)))}<br><small>Nästa chockfas tidigast ${esc(fd(addDays(w.to,42)))} (6 v), helst ${esc(fd(addDays(w.to,56)))} (8 v)</small></div>`;});
+      h+=`</div>`;
+    } }
+  ['p12'].concat(Object.keys(BLOCKS).filter(k=>k!=='p12')).forEach(k=>{
+    const def=BLOCKS[k], pw=def.previewWeeks||[1], all=[];for(let w=1;w<=def.weeks;w++)all.push(w);
+    h+=`<details><summary>Förhandsvisa: ${esc(def.name)}</summary><p class="mute" style="font-size:14px">${esc(def.desc)}</p><p><b>Intensitet vecka för vecka</b></p><ul>${all.map(w=>`<li><b>Vecka ${w} (${esc(def.weekName(w))}):</b> ${esc(def.focusFor(w))}</li>`).join('')}</ul>`;
+    pw.forEach(w=>{
+      h+=`<p><b>Träningspassen${pw.length>1?' – '+esc(def.weekName(w).split(' · ')[0]):''}</b></p>`;
+      DAYS.slice(0,5).forEach(d=>{
+        const P=def.build(w,d);
+        h+=`<p><b>${DN[d]}: ${esc(P.title)}</b></p><ul>${P.blocks.flat().map(x=>`<li>${x.tag?esc(x.tag)+'. ':''}${esc(EX[x.id][0])} – ${x.sets}×${esc(x.reps)} (vila ${esc(restLabel(x))})${x.maint?' <small>underhåll</small>':''}</li>`).join('')}</ul>`;
+      });
     });
     h+=`</details>`;
   });
@@ -623,24 +794,24 @@ function sessionsWithEx(id){
 }
 function weekRows(){
   const m={};
-  const R=k=>(m[k]=m[k]||{n:0,sets:0,vol:0,cm:0});
+  const R=k=>(m[k]=m[k]||{n:0,sets:0,vol:0,cm:0,bi:0,tri:0,inten:false});
   Object.values(S.sessions).forEach(s=>{
     let any=false,sets=0,vol=0;
-    Object.values(s.sets||{}).forEach(a=>a.forEach(x=>{if(x.done){any=true;sets++;vol+=(+x.w||0)*(+x.r||0);if(x.dw&&x.dr)vol+=(+x.dw)*(+x.dr);}}));
-    if(any){const r=R(mondayISO(s.date));r.n++;r.sets+=sets;r.vol+=vol;}
+    Object.values(s.sets||{}).forEach(a=>a.forEach(x=>{if(x.done){any=true;sets++;vol+=(+x.w||0)*(+x.r||0);dropsOf(x).forEach(dd=>{vol+=dd.w*dd.r;});}}));
+    if(any){const r=R(mondayISO(s.date));r.n++;r.sets+=sets;r.vol+=vol;if(String(s.plan)[0]==='b')r.inten=true;Object.keys(s.sets||{}).forEach(id=>{const dn=s.sets[id].filter(x=>x.done).length;if(BI.includes(id))r.bi+=dn;if(TRI.includes(id))r.tri+=dn;});}
   });
   Object.keys(S.cardio).forEach(d=>{const mm=cardioMins(d);if(mm)R(mondayISO(d)).cm+=mm;});
   return Object.keys(m).sort().reverse().slice(0,8).map(k=>Object.assign({k},m[k]));
 }
 function viewProg(){
   const all=Object.values(S.sessions);let n=0,sets=0,vol=0;
-  all.forEach(s=>{let any=false;Object.values(s.sets||{}).forEach(a=>a.forEach(x=>{if(x.done){any=true;sets++;vol+=(+x.w||0)*(+x.r||0);if(x.dw&&x.dr)vol+=(+x.dw)*(+x.dr);}}));if(any)n++;});
+  all.forEach(s=>{let any=false;Object.values(s.sets||{}).forEach(a=>a.forEach(x=>{if(x.done){any=true;sets++;vol+=(+x.w||0)*(+x.r||0);dropsOf(x).forEach(dd=>{vol+=dd.w*dd.r;});}}));if(any)n++;});
   const ids=Object.keys(EX).filter(id=>sessionsWithEx(id).length);
   let h=`<h2>Framsteg</h2><div class="stat" style="margin-top:10px"><div><b>${n}</b><small>pass</small></div><div><b>${sets}</b><small>set</small></div><div><b>${(vol/1000).toFixed(1).replace('.',',')}</b><small>ton lyft</small></div></div>`;
   const wr=weekRows();
   if(wr.length){
     h+=`<div class="card"><h3>Vecka för vecka</h3>`;
-    wr.forEach(r=>{h+=`<div class="sess"><b>Vecka ${isoWeek(r.k)}</b> · ${esc(fd(r.k))}<br>${r.n} pass · ${r.sets} set · ${(r.vol/1000).toFixed(1).replace('.',',')} ton${r.cm?` · ${fmtN(r.cm)} min kondition`:''}</div>`;});
+    wr.forEach(r=>{h+=`<div class="sess"><b>Vecka ${isoWeek(r.k)}</b> · ${esc(fd(r.k))}<br>${r.n} pass · ${r.sets} set · ${(r.vol/1000).toFixed(1).replace('.',',')} ton${r.cm?` · ${fmtN(r.cm)} min kondition`:''}<br><small>Biceps ${r.bi} · triceps ${r.tri} set${!r.inten&&(r.bi>10||r.tri>10)?' ⚠ över 10 set (grundschemat: 6–10)':''}</small></div>`;});
     h+=`</div>`;
   }
   if(!ids.length)return h+`<div class="card"><p>Logga ditt första pass så dyker graferna upp här.</p></div>`;
@@ -650,7 +821,7 @@ function viewProg(){
   const pts=ss.map(s=>{let b=0;s.sets[ui.ex].forEach(x=>{if(x.done)b=Math.max(b,e1(+x.w,+x.r));});return {d:s.date,b};});
   h+=chart(pts)+`<p class="mute" style="font-size:13px">Linjen visar uppskattad maxstyrka (1RM, Epley) per pass.</p>`;
   ss.slice().reverse().slice(0,8).forEach(s=>{
-    h+=`<div class="sess"><b>${esc(fd(s.date))}</b> · ${esc(planFor(s.plan).title)}<br>${s.sets[ui.ex].filter(x=>x.done).map(x=>(x.w===''?'0':x.w)+'×'+x.r+(x.dw?` ↓${x.dw}×${x.dr||'?'}`:'')).join(' · ')}</div>`;
+    h+=`<div class="sess"><b>${esc(fd(s.date))}</b> · ${esc(planFor(s.plan).title)}<br>${s.sets[ui.ex].filter(x=>x.done).map(x=>(x.w===''?'0':x.w)+'×'+x.r+dropsOf(x).map(dd=>` ↓${dd.w}×${dd.r}`).join('')).join(' · ')}</div>`;
   });
   return h+`</div>`;
 }
@@ -735,12 +906,26 @@ function viewGuide(){
 <li>Missade du ett pass? Öppna <b>Byt pass</b> och välj det du vill köra i dag.</li>
 <li>Bläddra bakåt och framåt med pilarna eller välj datum. Allt sparas på telefonen och i din Gist-backup.</li></ul></details>
 <details><summary>Normalvecka</summary><ul>
-<li>Mån: bröst och triceps · Tis: rygg och biceps · Ons: ben och mage · Tors: axlar och armar · Fre: ben, rygg och bål.</li>
-<li>Arm, rygg, mage och ben får extra volym (2–3 pass i veckan). Passen är tänkta att ta 30–40 min.</li>
+<li>Mån: bröst och triceps · Tis: rygg och biceps · Ons: ben och mage · Tors: axlar och bål · Fre: ben, rygg och bål.</li>
+<li>Armarna tränas 2 gånger i veckan (triceps måndag, biceps tisdag), 6 set vardera. Grundschemat rekommenderar 6–10 set biceps och triceps per vecka. Resten av armarbetet kommer via basövningar som latsdrag, rodd, bänkpress och press. Passen är tänkta att ta 30–40 min.</li>
 <li>Lör: kondition 30–45 min i lugnt tempo, eller vila. Sön: vila.</li></ul></details>
-<details><summary>Intensivperioder</summary><ul>
-<li>Planera dem under Schema. En period ersätter normalveckan mån–fre i 4 veckor (3 intensiva veckor + 1 deload), och därefter är du tillbaka i normalveckan.</li>
-<li>Du väljer muskelgrupp: <b>Armar, Rygg, Bröst, Ben, Axlar eller Bål</b>. Alla har samma upplägg som armprogrammet.</li>
+<details><summary>12-veckors blockperiodisering</summary><ul>
+<li>Planera den under Schema. Tre block à 4 veckor, och därefter börjar du om (kan stängas av).</li>
+<li><b>Block 1 – Armar (vecka 1–4):</b> maximal hypertrofi för biceps och triceps, resten underhålls. RIR 2 → RIR 1 → failure (dropset på fredagen) → deload.</li>
+<li><b>Block 2 – Ben &amp; mage (vecka 5–8):</b> underkroppsstyrka och volym samt djup magmuskulatur. Armar underhålls med extremt låg volym. Vecka 7: failure på sista setet i benpress och lårcurl, och benspark avslutas med trippelt dropset.</li>
+<li><b>Block 3 – Rygg &amp; bröst (vecka 9–12):</b> bredd och tjocklek. Armarna får underhåll via tunga baslyft, ingen isolerad armträning. Vecka 11: sista setet i bänkpress och latsdrag till failure, och fredagens kabelövningar till total utmattning. Vecka 12: mycket lätt med halverad volym.</li>
+<li><b>Vecka 13+: starta om på Block 1 (Armar).</b> Armarna är nu 100 % utvilade, ledvätskan i armbågarna är återställd och musklerna är extremt känsliga för direkt volym igen.</li></ul></details>
+<details><summary>Vila mellan chockfaser (undvik överansträngning)</summary><ul>
+<li>Efter en deload-vecka är musklerna återhämtade, men senor, fästen och centrala nervsystemet behöver mer tid efter den extrema volymen. Vänta <b>minst 6–8 veckor</b> innan du kör en ny liknande chockfas för samma muskelgrupp. Appen varnar om du planerar en för tidig chockfas.</li>
+<li><b>Varför:</b> senor och ligament (särskilt runt armbågarna) har sämre blodflöde än muskler och behöver flera veckor för att anpassa sig. Dessutom vänjer sig kroppen snabbt vid extrem stress. Chockar du armarna igen direkt svarar de sämre, och du behöver nollställa känsligheten för träningsvolym.</li>
+<li><b>Under de 6–8 veckorna:</b> kör ett balanserat grundschema (normalveckan, eller block 2 och 3 i 12-veckorsprogrammet).</li>
+<li>Träna armarna 1 till max 2 gånger i veckan.</li>
+<li>Sänk volymen till totalt 6–10 set för biceps och 6–10 set för triceps per vecka (chockfasen ligger på 15–20 set). Appen visar veckans armvolym.</li>
+<li>Fokusera på basövningar: tunga latsdrag, roddar, bänkpress och militärpress ger armarna sekundärt arbete.</li>
+<li>Behåll de tyngre vikterna du klarade i slutet av chockfasen, men gör färre set.</li>
+<li>Efter ungefär två månader med vanligt schema är kroppen helt återhämtad och redo för nästa intensiva 4-veckorsperiod.</li></ul></details>
+<details><summary>Enskilda 4-veckors chockfaser</summary><ul>
+<li>Du kan i stället köra en enda chockfas för <b>Armar, Rygg, Bröst, Ben, Axlar eller Bål</b>. De har samma upplägg som armprogrammet.</li>
 <li>Veckan: mån Pass A (tungt) · tis underhåll · ons Pass B (volym och pump) · tors underhåll · fre Pass C (isolering och superset).</li>
 <li>Du kan ta bort en period med ✕. Loggade pass finns kvar.</li></ul></details>
 <details><summary>Armprogrammet – originalschemat</summary><ul>
@@ -838,10 +1023,22 @@ document.addEventListener('click',e=>{
     const type=$('#bt').value,def=BLOCKS[type];let start=$('#bs').value;
     if(!start){toast('Välj ett startdatum');return;}
     const mon=mondayISO(start);if(mon!==start){start=mon;toast('Startar måndagen '+fd(start));}
-    const end=addDays(start,def.weeks*7);
-    const clash=S.blocks.some(b=>!b.del&&BLOCKS[b.type]&&start<addDays(b.start,BLOCKS[b.type].weeks*7)&&b.start<end);
-    if(clash){toast('Perioden krockar med en annan period');return;}
-    S.blocks.push({id:uid(),type,start,updatedAt:Date.now()});persist();queueSync();render();toast('Period inplanerad');
+    const repeat=!!(def.cycle&&$('#brep')&&$('#brep').checked);
+    const nb={id:uid(),type,start,repeat,updatedAt:Date.now()},nEnd=blockEnd(nb);
+    const clash=S.blocks.some(b=>!b.del&&BLOCKS[b.type]&&start<blockEnd(b)&&b.start<nEnd);
+    if(clash){toast(repeat?'Upprepningen krockar med en annan period. Stäng av upprepningen eller ta bort den andra.':'Perioden krockar med en annan period');return;}
+    const g=restGuard(nb);
+    if(g.tooShort.length&&!confirm('Rekommendationen är minst 6–8 veckor mellan chockfaser för samma muskelgrupp, eftersom senor och leder läker långsammare än muskler. Här blir det för kort för: '+g.tooShort.join(', ')+'. Lägga till ändå?'))return;
+    S.blocks.push(nb);persist();queueSync();render();
+    toast(g.okButShort.length?'Period inplanerad. 6 veckors vila räcker, men 8 är bäst ('+g.okButShort.join(', ')+')':'Period inplanerad');
+  }
+  else if(a==='brep'){
+    const b=S.blocks.find(x=>x.id===t.dataset.id);
+    if(b){
+      if(!b.repeat){b.repeat=true;const nEnd=blockEnd(b);if(S.blocks.some(o=>o!==b&&!o.del&&BLOCKS[o.type]&&b.start<blockEnd(o)&&o.start<nEnd)){b.repeat=false;toast('Upprepningen krockar med en annan period');return;}}
+      else b.repeat=false;
+      b.updatedAt=Date.now();persist();queueSync();render();
+    }
   }
   else if(a==='bdel'){const b=S.blocks.find(x=>x.id===t.dataset.id);if(b&&confirm('Ta bort perioden? Loggade pass finns kvar.')){b.del=true;b.updatedAt=Date.now();persist();queueSync();render();}}
   else if(a==='fprev'||a==='fnext'){const d=addDays(fdate,a==='fnext'?1:-1);if(d<=today()){fdate=d;render();}}
@@ -878,7 +1075,8 @@ document.addEventListener('input',e=>{
     const s=getSess(true),arr=(s.sets[el.dataset.ex]=s.sets[el.dataset.ex]||[]),i=+el.dataset.i;
     const set=(arr[i]=arr[i]||{w:'',r:'',done:false});
     set[el.dataset.f]=parseNum(el.value);
-    if(el.dataset.f==='w'){const dw=el.closest('.setwrap').querySelector('.dw');if(dw&&dw.value==='')dw.placeholder=set.w===''?'−30 %':Math.round(set.w*0.7*2)/2;}
+    { const nxt={w:'dw',dw:'dw2',dw2:'dw3'}[el.dataset.f];
+      if(nxt){const e2=el.closest('.setwrap').querySelector('[data-f="'+nxt+'"]');if(e2&&e2.value==='')e2.placeholder=set[el.dataset.f]===''?'−30 %':Math.round(set[el.dataset.f]*(nxt==='dw'&&!el.closest('.setwrap').querySelector('[data-f="dw2"]')?0.7:0.75)*2)/2;} }
     touch(s);
   } else if(el.dataset.sf){
     const s=getSess(true);s[el.dataset.sf]=el.dataset.sf==='bw'?parseNum(el.value):el.value;touch(s);
