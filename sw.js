@@ -1,5 +1,5 @@
 // Offline-cache: appen öppnas utan nät. Byt version (V) när du uppdaterar index.html.
-const V = 'armpass-v4';
+const V = 'armpass-v5';
 const ASSETS = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
