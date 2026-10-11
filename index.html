@@ -99,6 +99,17 @@ svg.chart{width:100%;height:auto;display:block}
 .chk2{display:flex;gap:8px;align-items:center;font-size:14px;color:var(--mute);margin:10px 0}
 .chk2 input{width:22px;height:22px}
 .sub{margin-top:20px}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:6px;background:var(--card);padding:4px;border-radius:14px;margin-bottom:12px}
+.seg button{background:transparent;min-height:42px;font-weight:700;color:var(--mute)}
+.seg button.on{background:var(--card2);color:var(--text)}
+.chip.g{background:var(--green);color:#04281a}
+.chip.r{background:var(--red);color:#2b0a0a}
+.kv{display:grid;grid-template-columns:1fr auto;gap:10px;padding:7px 0;border-top:1px solid var(--line);font-size:15px}
+.kv span:last-child{color:var(--mute);text-align:right}
+.card ol,details ol{margin:6px 0;padding-left:22px}
+.card ol li,details ol li{margin:6px 0}
+.lcout{background:var(--bg);border-radius:12px;padding:10px 12px;margin-top:10px;font-size:15px}
+.lcout div{padding:3px 0}
 @media (prefers-reduced-motion:no-preference){.chk{transition:background .12s}}
 </style>
 </head>
@@ -861,6 +872,104 @@ function meter(label,val,tgt,unit,hi){
   return `<div class="meter"><div class="top"><span>${label}</span><span><b>${fmtN(val)}</b> / ${rng} ${unit}${unit==='g'?' (minst)':''}</span></div><div class="bar"><i class="${cls}" style="width:${pct.toFixed(1)}%"></i></div><small>${txt}</small></div>`;
 }
 function viewFood(){
+  const seg=`<div class="seg"><button class="${ui.fv==='learn'?'':'on'}" data-act="fv" data-v="log">Logga</button><button class="${ui.fv==='learn'?'on':''}" data-act="fv" data-v="learn">Kostlära</button></div>`;
+  return seg+(ui.fv==='learn'?viewLearn():viewFoodLog());
+}
+function lcHtml(w,k){
+  if(w===''||k===''||w<=0||k<=0)return '<div class="mute">Fyll i kroppsvikt och kalorier.</div>';
+  const pLo=1.6*w,pHi=2.2*w,pGoal=2*w,fat=k*0.25/9,carb=Math.max(0,(k-4*pGoal-9*fat)/4);
+  const g=n=>fmtN(n).replace('\u00a0',' ');
+  return `<div><b>Protein:</b> ${g(pLo)}–${g(pHi)} g per dag. Sikta på ca ${g(pGoal)} g (2,0 g per kg).</div>
+  <div><b>Per måltid:</b> ca ${g(0.3*w)}–${g(0.5*w)} g protein (3–5 måltider).</div>
+  <div><b>Fett:</b> ca ${g(fat)} g (ungefär 25 % av energin).</div>
+  <div><b>Kolhydrater:</b> ca ${g(carb)} g (${(carb/w).toFixed(1).replace('.',',')} g per kg), resten av energin.</div>
+  <div class="mute" style="font-size:13px">Exempel, inte facit. Följ kroppsvikten i 2–3 veckor: ökar du mer än ca 0,5 kg per vecka kan du minska med 200 kcal, och står vikten still kan du öka med 200 kcal.</div>`;
+}
+function viewLearn(){
+  const bwl=Object.values(S.sessions).filter(x=>x.bw!==''&&x.bw!==undefined&&+x.bw>0).sort((a,b)=>a.date<b.date?1:-1);
+  const lw=bwl.length?+bwl[0].bw:75, lk=Math.round((S.targets.train.k+(S.targets.train.k2||S.targets.train.k))/2);
+  const prot=[['Ägg (1 st)','ca 7 g'],['Kycklingfilé, 150 g','ca 40 g'],['Nötfärs 10 %, 150 g (rå vikt)','ca 28 g'],['Lax, 150 g','ca 30 g'],['Torsk, 150 g','ca 27 g'],['Tonfisk på burk, 1 burk','ca 25 g'],['Kvarg naturell, 250 g','ca 30 g'],['Cottage cheese, 200 g','ca 22 g'],['Skyr, 200 g','ca 22 g'],['Mjölk, 3 dl','ca 10 g'],['Tofu, 150 g','ca 18 g'],['Kokta linser, 2 dl','ca 13 g'],['Havregryn, 2 dl (80 g)','ca 11 g'],['Proteinpulver, 1 skopa (30 g)','ca 20–25 g'],['Mandel, 30 g','ca 6 g']];
+  return `<h2>Kostlära</h2><p class="mute">Hur maten fungerar när du vill bygga muskler, förklarat enkelt.</p>
+<div class="card"><h3>5 snabba regler</h3><ol>
+<li>Ät protein i varje måltid, ca 25–40 g.</li>
+<li>Lägg kolhydraterna kring träningen. De är bränslet.</li>
+<li>Gör fiberrika kolhydrater till basen (havre, fullkorn, potatis, baljväxter, frukt).</li>
+<li>Välj mest oförädlad mat. Chark, godis och läsk får vara undantag.</li>
+<li>Ät tillräckligt och sov 7–9 timmar. Muskler byggs i vilan.</li></ol></div>
+<details open><summary>Så växer muskler</summary><ul>
+<li><b>Träningen är signalen.</b> Tung belastning visar kroppen att musklerna behöver bli starkare.</li>
+<li><b>Maten är byggmaterial och energi.</b> Protein ger råvarorna, och kolhydrater och fett ger energin som behövs för bygget.</li>
+<li><b>Sömnen är byggtiden.</b> Musklerna växer inte under passet utan i timmarna efteråt.</li>
+<li>Muskeln växer när uppbyggnaden över tid är större än nedbrytningen. För att växa behövs oftast ett litet energiöverskott. Schemat siktar på 2 700–2 900 kcal per dag.</li>
+<li>Saknas något av de tre (träning, mat, vila) räcker inte de andra till.</li></ul></details>
+<details><summary>Protein och aminosyror</summary><ul>
+<li><b>Protein</b> består av långa kedjor av <b>aminosyror</b>, ungefär som lego. Vid matsmältningen bryts proteinet ner till aminosyror som tas upp i blodet. Kroppen bygger sedan sina egna proteiner av dem, till exempel muskler.</li>
+<li>Det finns 20 aminosyror. <b>Nio är essentiella</b>: kroppen kan inte tillverka dem, så de måste komma från maten (leucin, isoleucin, valin, lysin, metionin, fenylalanin, treonin, tryptofan och histidin).</li>
+<li><b>Leucin</b> är aminosyran som mest fungerar som startknapp för muskelbygget. Ca 2–3 g leucin per måltid brukar räcka, och det får du i ca 25–40 g bra protein.</li>
+<li><b>BCAA</b> är leucin, isoleucin och valin. Äter du tillräckligt med protein får du dem redan, så BCAA-tillskott behövs normalt inte.</li>
+<li><b>Hur mycket?</b> Vid styrketräning rekommenderas ofta ca 1,6–2,2 g protein per kg kroppsvikt och dag. Vid 75 kg blir det 120–165 g, och schemats minst 150 g ligger i den övre delen. Mer än ca 2,2 g per kg ger ingen extra muskeltillväxt.</li>
+<li><b>Fördela det</b> på 3–5 måltider, med en efter träningen och gärna en före sömn. Dagens totala mängd är viktigast, och jämn fördelning är en bonus.</li>
+<li>Överskottet används som energi eller lagras som fett. För friska är hög proteinmängd i regel okej, men har du njursjukdom eller någon annan sjukdom bör du fråga läkare eller dietist.</li></ul></details>
+<details><summary>Kolhydrater – bränslet</summary><ul>
+<li>Kolhydrater bryts ner till <b>glukos</b>, kroppens snabbaste energikälla, och särskilt viktig vid hård träning. Överskottet lagras som <b>glykogen</b> i musklerna och levern. Är lagren tomma blir passen tyngre och återhämtningen sämre.</li>
+<li><b>Tre roller för muskelväxt:</b> (1) bränsle, så att du orkar köra mer vikt och volym, (2) de sparar protein, för får kroppen nog med energi behöver den inte bryta ner protein till bränsle, och (3) insulinet de ger hjälper in aminosyror och glukos i muskeln och dämpar nedbrytning, men det är en bonus och inget krav.</li>
+<li><b>Hur mycket?</b> Vid regelbunden styrketräning ofta ca 3–5 g per kg kroppsvikt och dag (vid 75 kg: 225–375 g). Med schemats 2 700–2 900 kcal hamnar du ofta runt 4–5 g per kg.</li>
+<li>Äter du lite mer på träningsdagar och lite mindre på vilodagar följer du kroppens behov. Appen har därför olika mål för dem.</li></ul></details>
+<details><summary>Fett och energi</summary><ul>
+<li><b>Energi per gram:</b> protein 4 kcal, kolhydrater 4 kcal, fett 9 kcal, alkohol 7 kcal.</li>
+<li>Fett behövs för hormoner, cellernas väggar och vitaminerna A, D, E och K. Ungefär 20–35 % av energin brukar vara lagom. Välj mest omättat: olivolja, rapsolja, nötter, avokado och fet fisk.</li>
+<li>Begränsa mättat fett från chark, feta bakverk och friterad mat.</li>
+<li>Muskler växer bäst med ett litet överskott, ca 200–400 kcal över det du gör av med. Ökar du mer än ca 0,5 kg per vecka blir en större del fett.</li>
+<li>Drick regelbundet. Törst och uttorkning sänker både styrka och koncentration.</li></ul></details>
+<details><summary>Bra och dåligt protein – så avgör du</summary>
+<p>Ställ tre frågor:</p><ol>
+<li><b>Kvalitet:</b> innehåller det alla essentiella aminosyror, inklusive mycket leucin, och är det lätt att smälta? Ägg, mejeri, kött, fisk och soja är <b>kompletta</b>. Växtprotein har ofta lite för lite av någon aminosyra, till exempel lysin i spannmål och metionin i baljväxter. Kombinera över dagen (bönor med ris eller bröd, linser med havre) så blir det jämnt. Ärt- och sojaprotein fungerar bra.</li>
+<li><b>Paketet:</b> vad följer med proteinet? Rent kött, fisk, ägg, mejeri och baljväxter är bra. Mättat fett, mycket salt, tillsatt socker och många tillsatser drar ned värdet.</li>
+<li><b>Proteindensitet:</b> hur mycket protein får du per kcal? Kyckling, kvarg, tonfisk och vassle är täta. Nötter och ost är mer fett än protein.</li></ol>
+<p><span class="chip g">Bra val</span> ägg, kyckling och kalkon, fisk (särskilt lax och torsk), kvarg, skyr, cottage cheese, mjölk, baljväxter, tofu och tempeh, samt proteinpulver som komplement.</p>
+<p><span class="chip">I måttliga mängder</span> ost (salt och mättat fett) och rött kött. Livsmedelsverkets kostråd är högst 350 g tillagat rött kött per vecka (nöt, gris och lamm), varav bara en liten del bör vara chark. Kolla livsmedelsverket.se för aktuella råd.</p>
+<p><span class="chip r">Sämre val</span> chark som korv, bacon, salami och skinka. De är ofta rökta eller nitritbehandlade, innehåller mycket salt och mättat fett och ökar risken för tjocktarms- och ändtarmscancer. Dit hör också proteinbars och proteinglass med mycket socker, och kollagenpulver (gelatin), som inte är ett bra muskelprotein trots att det säljs som protein.</p>
+<p><b>Så läser du förpackningen:</b> kort ingredienslista, protein högt upp, lite tillsatt socker. En bra proteinbar eller shake har minst 15–20 g protein och lite socker. Välj gärna proteinpulver som är tredjepartstestat (till exempel Informed Sport).</p>
+<p><b>Pulver är mat, inte magi:</b> vassle tas upp snabbt (efter träning), kasein långsamt (före sömn), och ärt eller soja passar vegetarianer.</p></details>
+<details><summary>Bra och dåliga kolhydrater</summary><ul>
+<li>Kolhydrater är inte bra eller dåliga i sig. Det handlar om hur mycket fibrer och näring som följer med och hur snabbt blodsockret stiger.</li>
+<li><span class="chip g">Bra bas</span> fullkorn (havre, råg, korn, fullkornsris och fullkornspasta, bulgur, quinoa), baljväxter, potatis och rotfrukter, frukt, bär och grönsaker. De ger fibrer, vitaminer, mineraler och jämn energi som mättar längre.</li>
+<li><span class="chip r">Sämre</span> mycket tillsatt socker: läsk, saft, godis, bakverk, söta flingor och mycket juice. Det är mycket energi men lite näring, och det mättar dåligt.</li>
+<li><b>Kring träning är snabba kolhydrater helt okej</b>: banan, vitt ris, vitt bröd, sylt, honung, torkad frukt och sportdryck. De fyller på glykogen snabbt och ligger lätt i magen.</li>
+<li><b>Så läser du förpackningen:</b> fullkorn som första ingrediens, fler fibrer är bättre, lite tillsatt socker och en kort ingredienslista. Nyckelhålet är en enkel genväg till hälsosammare val.</li>
+<li><b>GI</b> betyder hur snabbt en kolhydrat höjer blodsockret. Låg GI mättar ofta längre, men du behöver inte räkna på det.</li></ul></details>
+<details><summary>Vad ska jag äta när?</summary><ul>
+<li><b>2–3 timmar före träning:</b> en måltid med kolhydrater och protein, måttligt med fett och fibrer. <b>30–60 minuter före:</b> något lätt, till exempel banan eller en macka.</li>
+<li><b>Efter träning (inom ett par timmar):</b> 25–40 g protein plus kolhydrater som fyller på glykogen. Det finns ingen exakt 30-minuters deadline, så ät en bra måltid inom några timmar.</li>
+<li><b>Före sömn:</b> kvarg eller cottage cheese ger protein långsamt under natten.</li>
+<li><b>Vilodagar:</b> samma protein, lite färre kolhydrater och kalorier.</li></ul></details>
+<details><summary>Förslag på mat</summary>
+<p><b>Exempeldag, träningsdag (ca 150–160 g protein, ungefärligt):</b></p><ul>
+<li><b>Frukost:</b> havregrynsgröt (2 dl gryn) på mjölk, banan och 2 ägg – ca 35 g protein.</li>
+<li><b>Mellanmål före träning:</b> kvarg 250 g med bär och en skiva bröd – ca 30 g.</li>
+<li><b>Efter träning:</b> proteinshake på mjölk och en banan – ca 25–30 g.</li>
+<li><b>Lunch:</b> kycklingfilé 130 g, ris och grönsaker – ca 40 g.</li>
+<li><b>Middag:</b> lax 150 g, potatis och broccoli – ca 30 g.</li></ul>
+<p class="mute" style="font-size:14px">Lägg till kolhydrater (mer ris och potatis) och fett (olivolja, nötter) för att nå kalorimålet.</p>
+<p><b>Mellanmål med 20–30 g protein:</b> kvarg med bär, cottage cheese på knäckebröd, tonfisk på macka, ägg och bröd, proteinshake med banan, skyr med müsli.</p>
+<p><b>Vegetariskt eller veganskt:</b> tofuwok med ris, linsgryta med bröd, kikärtor och quinoa, ärtprotein med havre, edamamebönor, tempeh.</p>
+<p><b>Tallriksmodell (per måltid):</b> en handflata protein, 1–2 nävar kolhydrater, 2 nävar grönsaker och en tumme fett.</p></details>
+<details><summary>Protein per portion (ungefärligt)</summary>
+<p class="mute" style="font-size:14px">Värdena varierar mellan produkter, så kolla förpackningen.</p>
+${prot.map(r=>`<div class="kv"><span>${r[0]}</span><span>${r[1]}</span></div>`).join('')}</details>
+<details><summary>Vanliga myter</summary><ul>
+<li><b>"Proteinet måste in direkt efter passet."</b> Nej. Dagens totala mängd är viktigast.</li>
+<li><b>"Mer protein ger mer muskler."</b> Bara upp till ca 2,2 g per kg. Därefter hjälper kolhydrater, sömn och träning mer.</li>
+<li><b>"Kolhydrater gör dig fet."</b> Det är energiöverskottet som gör det. Kolhydrater är bränslet som får dig att orka träna.</li>
+<li><b>"Fett gör dig fet."</b> Samma sak. Fett behövs, men det är energirikt.</li>
+<li><b>"Växtprotein är sämre."</b> Det kan vara lika bra om mängden och variationen stämmer.</li>
+<li><b>"Man måste ha kosttillskott."</b> Mat först. Pulver är bara ett bekvämt sätt att nå målet, och kreatin är det som har bäst stöd.</li></ul></details>
+<div class="card"><h3>Räkna på dina siffror</h3>
+<div class="fields"><label class="f">Kroppsvikt (kg)<input id="lcw" type="text" inputmode="decimal" data-lc="1" value="${lw}"></label><label class="f">Kalorier per dag<input id="lck" type="text" inputmode="numeric" data-lc="1" value="${lk}"></label></div>
+<div class="lcout" id="lcout">${lcHtml(lw,lk)}</div></div>
+<p class="mute" style="font-size:13px">Allmän information, inte medicinsk rådgivning. Har du sjukdom, allergi eller tar medicin bör du prata med läkare eller dietist.</p>`;
+}
+function viewFoodLog(){
   const ds=fdate,d=S.food[ds]||{entries:[],mode:''},type=dayType(ds),T=S.targets[type],tot=ftot(ds);
   const isToday=ds===today();
   const lab=isToday?'Idag':parseISO(ds).toLocaleDateString('sv-SE',{weekday:'long',day:'numeric',month:'long'});
@@ -956,6 +1065,7 @@ function viewGuide(){
 <li>Känner du smärta i armbågar eller senor (inte bara muskelbränna): avbryt övningen och byt till en kabelvariant.</li></ul></details>
 <details><summary>Kost i appen</summary><ul>
 <li>Fliken Kost loggar protein, kalorier och sömn per dag. Målen kan vara olika för träningsdagar och vilodagar.</li>
+<li>Under Kost finns också <b>Kostlära</b>, som förklarar protein, aminosyror, kolhydrater och vad som är bra och dåligt val. <button class="ghost" data-act="fv" data-v="learn" data-go="food">Öppna Kostlära</button></li>
 <li>Dagtypen väljs automatiskt (helger och vilodagar är vila). Tryck på knappen för att byta manuellt.</li>
 <li>Spara vanliga måltider som favoriter, då loggar du dem med ett tryck.</li></ul></details>
 <details><summary>Mat, sömn och återhämtning</summary><ul>
@@ -1053,6 +1163,7 @@ document.addEventListener('click',e=>{
   else if(a==='favadd'){const f=S.favs.find(x=>x.id===t.dataset.id);if(f){addEntry(fdate,f.n,f.p,f.k);render();toast('Lade till '+f.n);}}
   else if(a==='fdel'){const d=fday(fdate,false);const x=d&&d.entries.find(z=>z.id===t.dataset.id);if(x){x.del=true;x.updatedAt=Date.now();ftouch(d);render();}}
   else if(a==='favdel'){const f=S.favs.find(x=>x.id===t.dataset.id);if(f){f.del=true;f.updatedAt=Date.now();persist();queueSync();render();}}
+  else if(a==='fv'){ui.fv=t.dataset.v;if(t.dataset.go)ui.tab=t.dataset.go;render();window.scrollTo(0,0);}
   else if(a==='savetok'){cfg.token=$('#tok').value.trim();cfg.status='';saveCfg();syncNow(true);}
   else if(a==='sync')syncNow(true);
   else if(a==='export')exportJSON();
@@ -1080,6 +1191,8 @@ document.addEventListener('input',e=>{
     touch(s);
   } else if(el.dataset.sf){
     const s=getSess(true);s[el.dataset.sf]=el.dataset.sf==='bw'?parseNum(el.value):el.value;touch(s);
+  } else if(el.dataset.lc){
+    const o=$('#lcout');if(o)o.innerHTML=lcHtml(parseNum($('#lcw').value),parseNum($('#lck').value));
   } else if(el.dataset.fs){
     const d=fday(fdate,true);d[el.dataset.fs]=parseNum(el.value);ftouch(d);
     const mg=$('#slmsg');if(mg&&el.dataset.fs==='sleep'){const v=d.sleep;mg.textContent=v===''?'':(v>=7&&v<=9?'✅ inom målet':v<7?'under 7 h':'över 9 h');}
