@@ -130,6 +130,7 @@ body.typing nav.tabs,body.typing #timer{display:none}
   <button data-tab="set">Backup</button>
 </nav>
 
+<script src="kost.js"></script>
 <script>
 'use strict';
 /* =====================================================================
@@ -539,7 +540,7 @@ function upgrade(st){
     delete st.start;delete st.startAt;delete st.cycle;
   }
   st.v=2;
-  st.blocks=st.blocks||[];st.cardio=st.cardio||{};st.food=st.food||{};st.favs=st.favs||[];
+  st.blocks=st.blocks||[];st.cardio=st.cardio||{};st.food=st.food||{};st.favs=st.favs||[];st.cfoods=st.cfoods||[];st.meals=st.meals||[];st.units=st.units||[];
   if(!st.targets||!st.targets.train||!st.targets.rest||!st.targets.at)st.targets=defT();
   ['train','rest'].forEach(k=>{if(st.targets[k].f===undefined)st.targets[k].f=30;});
   return st;
@@ -886,8 +887,9 @@ function meter(label,val,tgt,unit,hi){
   return `<div class="meter"><div class="top"><span>${label}</span><span><b>${fmtN(val)}</b> / ${rng} ${unit}${unit==='g'?' (minst)':''}</span></div><div class="bar"><i class="${cls}" style="width:${pct.toFixed(1)}%"></i></div><small>${txt}</small></div>`;
 }
 function viewFood(){
-  const seg=`<div class="seg"><button class="${ui.fv==='learn'?'':'on'}" data-act="fv" data-v="log">Logga</button><button class="${ui.fv==='learn'?'on':''}" data-act="fv" data-v="learn">Kostlära</button></div>`;
-  return seg+(ui.fv==='learn'?viewLearn():viewFoodLog());
+  const fv=ui.fv||'log';
+  const seg=`<div class="seg" style="grid-template-columns:repeat(3,1fr)"><button class="${fv==='log'?'on':''}" data-act="fv" data-v="log">Logga</button><button class="${fv==='build'?'on':''}" data-act="fv" data-v="build">Bygg måltid</button><button class="${fv==='learn'?'on':''}" data-act="fv" data-v="learn">Kostlära</button></div>`;
+  return seg+(fv==='learn'?viewLearn():fv==='build'?(typeof viewBuild==='function'?viewBuild():'<div class="card"><p class="err">Måltidsmodulen (kost.js) kunde inte laddas.</p></div>'):viewFoodLog());
 }
 function lcHtml(w,k){
   if(w===''||k===''||w<=0||k<=0)return '<div class="mute">Fyll i kroppsvikt och kalorier.</div>';
@@ -904,8 +906,8 @@ function lcHtml(w,k){
 function viewLearn(){
   const bwl=Object.values(S.sessions).filter(x=>x.bw!==''&&x.bw!==undefined&&+x.bw>0).sort((a,b)=>a.date<b.date?1:-1);
   const lw=bwl.length?+bwl[0].bw:75, lk=Math.round((S.targets.train.k+(S.targets.train.k2||S.targets.train.k))/2);
-  const prot=[['Ägg (1 st)','ca 7 g'],['Kycklingfilé, 150 g','ca 40 g'],['Nötfärs 10 %, 150 g (rå vikt)','ca 28 g'],['Lax, 150 g','ca 30 g'],['Torsk, 150 g','ca 27 g'],['Tonfisk på burk, 1 burk','ca 25 g'],['Kvarg naturell, 250 g','ca 30 g'],['Cottage cheese, 200 g','ca 22 g'],['Skyr, 200 g','ca 22 g'],['Mjölk, 3 dl','ca 10 g'],['Tofu, 150 g','ca 18 g'],['Kokta linser, 2 dl','ca 13 g'],['Havregryn, 2 dl (80 g)','ca 11 g'],['Proteinpulver, 1 skopa (30 g)','ca 20–25 g'],['Mandel, 30 g','ca 6 g']];
-  const fib=[['Bruna bönor, 2,5 dl','ca 12 g'],['Kokta kikärtor, 2 dl','ca 8 g'],['Kokta linser, 2 dl','ca 6 g'],['Havregryn, 2 dl (80 g)','ca 8 g'],['Fullkornspasta, 75 g torr vikt','ca 6 g'],['Fullkornsbröd, 1 skiva','ca 2–3 g'],['Chiafrön, 1 msk','ca 4 g'],['Mandel, 30 g','ca 4 g'],['Broccoli, 100 g','ca 3 g'],['Morötter, 100 g','ca 3 g'],['Hallon, 135 g','ca 5 g'],['Gröna ärtor, 113 g','ca 5 g'],['Äpple med skal','ca 3 g'],['Banan','ca 2–3 g'],['Avokado, ½','ca 5 g'],['Potatis, 1 medelstor','ca 2 g'],['Vitt bröd, 1 skiva','ca 1 g'],['Vitt ris, kokt 2 dl','under 1 g']];
+  const prot=[['Ägg (1 st)','ca 7 g'],['Kycklingfilé, 150 g','ca 40 g'],['Nötfärs 10 %, 150 g (rå vikt)','ca 28 g'],['Lax, 150 g','ca 30 g'],['Torsk, 150 g','ca 27 g'],['Tonfisk på burk, 1 burk','ca 25 g'],['Kvarg naturell, 250 g','ca 30 g'],['Cottage cheese, 200 g','ca 22 g'],['Skyr, 200 g','ca 22 g'],['Mjölk, 3 dl','ca 10 g'],['Tofu, 150 g','ca 18 g'],['Kokta linser, 2 dl','ca 13 g'],['Havregryn, 2 dl (ca 75 g)','ca 10 g'],['Proteinpulver, 1 skopa (30 g)','ca 20–25 g'],['Mandel, 30 g','ca 6 g']];
+  const fib=[['Bruna bönor, 2,5 dl','ca 12 g'],['Kokta kikärtor, 2 dl','ca 8 g'],['Kokta linser, 2 dl','ca 6 g'],['Havregryn, 2 dl (ca 75 g)','ca 8 g'],['Fullkornspasta, 75 g torr vikt','ca 6 g'],['Fullkornsbröd, 1 skiva','ca 2–3 g'],['Chiafrön, 1 msk','ca 4 g'],['Mandel, 30 g','ca 4 g'],['Broccoli, 100 g','ca 3 g'],['Morötter, 100 g','ca 3 g'],['Hallon, 135 g','ca 5 g'],['Gröna ärtor, 113 g','ca 5 g'],['Äpple med skal','ca 3 g'],['Banan','ca 2–3 g'],['Avokado, ½','ca 5 g'],['Potatis, 1 medelstor','ca 2 g'],['Vitt bröd, 1 skiva','ca 1 g'],['Vitt ris, kokt 2 dl','under 1 g']];
   return `<h2>Kostlära</h2><p class="mute">Kalorier, kolhydrater, protein och fibrer – hur maten fungerar när du vill bygga muskler, förklarat enkelt.</p>
 <div class="card"><h3>5 snabba regler</h3><ol>
 <li><b>Kalorier:</b> ät tillräckligt. Ett litet överskott (2 700–2 900 kcal i schemat) är grunden för att bygga muskler.</li>
@@ -1018,8 +1020,9 @@ function viewFoodLog(){
   let h=`<div class="daynav"><button data-act="fprev" aria-label="Föregående dag">‹</button><div class="mid"><b>${esc(lab)}</b><br><small>${esc(ds)}</small></div><button data-act="fnext" aria-label="Nästa dag"${isToday?' disabled style="opacity:.35"':''}>›</button></div>`;
   h+=`<div style="text-align:center;margin:6px 0"><button class="modechip" data-act="fmode">${type==='train'?'Träningsdag':'Vilodag'}${d.mode?'':' (auto)'}</button></div>`;
   h+=`<div class="card" id="meters">${metersHtml(ds)}</div>`;
+  h+=(typeof kostDayQuality==='function'?kostDayQuality(ds):'');
   const favs=S.favs.filter(f=>!f.del);
-  h+=`<div class="card"><h3>Lägg till</h3>`;
+  h+=`<div class="card"><h3>Snabb inmatning</h3><button class="ghost" data-act="fv" data-v="build" style="width:100%;margin-bottom:8px">Bygg måltid från ingredienser →</button>`;
   if(favs.length)h+=`<div class="favs">${favs.map(f=>`<button data-act="favadd" data-id="${f.id}">${esc(f.n)} · ${fmtN(f.p)} g · ${fmtN(f.k)} kcal${f.f?' · '+fmtD(f.f)+' g fibrer':''}</button>`).join('')}</div>`;
   h+=`<label class="f">Namn (valfritt)<input id="fn" type="text" placeholder="t.ex. Proteinshake" autocomplete="off"></label>
   <div class="fields3" style="margin-top:10px"><label class="f">Protein (g)<input id="fp" type="text" inputmode="decimal" placeholder="25"></label><label class="f">Kcal<input id="fk" type="text" inputmode="numeric" placeholder="200"></label><label class="f">Fibrer (g)<input id="ff" type="text" inputmode="decimal" placeholder="5"></label></div>
@@ -1028,7 +1031,7 @@ function viewFoodLog(){
   const ents=d.entries.filter(e=>!e.del);
   h+=`<div class="card"><h3>Dagens mat</h3>`;
   if(!ents.length)h+=`<p class="mute">Inget loggat än.</p>`;
-  ents.forEach(e=>{h+=`<div class="entry"><span>${esc(e.n||'Utan namn')}</span><span class="mute" style="font-size:14px">${entryTxt(e)}</span><button data-act="fdel" data-id="${e.id}" aria-label="Ta bort">✕</button></div>`;});
+  ents.forEach(e=>{h+=`<div class="entry"><span>${esc(e.n||'Utan namn')}${typeof kostDots==='function'?kostDots(e):''}${e.it?`<br><small class="mute">${esc(e.it.map(i=>i.n+' '+i.g+' g').join(', '))}</small>`:''}</span><span class="mute" style="font-size:14px">${entryTxt(e)}</span><button data-act="fdel" data-id="${e.id}" aria-label="Ta bort">✕</button></div>`;});
   h+=`</div>`;
   const tg=(k,f,label,mode)=>`<label class="f">${label}<input type="text" inputmode="${mode||'numeric'}" data-tg="${k}.${f}" value="${S.targets[k][f]!==undefined?S.targets[k][f]:''}"></label>`;
   h+=`<details><summary>Mål</summary><p class="mute" style="font-size:14px">Olika mål för träningsdagar och vilodagar. Vilodag är helger och dagar utan styrkepass (du kan byta dagtyp manuellt).</p>
@@ -1106,6 +1109,7 @@ function viewGuide(){
 <li>Känner du smärta i armbågar eller senor (inte bara muskelbränna): avbryt övningen och byt till en kabelvariant.</li></ul></details>
 <details><summary>Kost i appen</summary><ul>
 <li>Fliken Kost loggar protein, kalorier och fibrer per dag. Målen kan vara olika för träningsdagar och vilodagar.</li>
+<li><b>Bygg måltid</b> under Kost räknar ut kalorier, protein, kolhydrater, fett och fibrer från ingredienser och visar kvaliteten (grönt, gult, rött). Spara måltider och egna recept, till exempel granola, så loggas de med ett tryck. Näringsvärden kommer från Livsmedelsverkets livsmedelsdatabas (CC BY 4.0).</li>
 <li>Under Kost finns också <b>Kostlära</b>, som förklarar kalorier, protein, kolhydrater och fibrer och vad som är bra och dåligt val. <button class="ghost" data-act="fv" data-v="learn" data-go="food">Öppna Kostlära</button></li>
 <li>Dagtypen väljs automatiskt (helger och vilodagar är vila). Tryck på knappen för att byta manuellt.</li>
 <li>Spara vanliga måltider som favoriter, då loggar du dem med ett tryck.</li></ul></details>
@@ -1208,6 +1212,7 @@ document.addEventListener('click',e=>{
   else if(a==='savetok'){cfg.token=$('#tok').value.trim();cfg.status='';saveCfg();syncNow(true);}
   else if(a==='sync')syncNow(true);
   else if(a==='export')exportJSON();
+  else if(typeof kostAct==='function')kostAct(a,t,e);
 });
 document.addEventListener('change',e=>{
   const t=e.target;
@@ -1220,6 +1225,7 @@ document.addEventListener('change',e=>{
   }
   else if(t.dataset.tg){const [k,f]=t.dataset.tg.split('.');const v=parseNum(t.value);if(v!==''&&v>0){S.targets[k][f]=v;S.targets.at=Date.now();persist();queueSync();refreshMeters();}}
   else if(t.id==='imp'&&t.files[0])importJSON(t.files[0]);
+  else if(t.dataset.kb&&typeof kostChange==='function')kostChange(t);
 });
 document.addEventListener('input',e=>{
   const el=e.target;
@@ -1234,6 +1240,8 @@ document.addEventListener('input',e=>{
     const s=getSess(true);s[el.dataset.sf]=el.dataset.sf==='bw'?parseNum(el.value):el.value;touch(s);
   } else if(el.dataset.lc){
     const o=$('#lcout');if(o)o.innerHTML=lcHtml(parseNum($('#lcw').value),parseNum($('#lck').value));
+  } else if(el.dataset.kb&&typeof kostInput==='function'){
+    kostInput(el);
   }
 });
 function toggleSet(btn){
@@ -1289,6 +1297,7 @@ function mergeState(a,b){
   });
   o.food=mergeDays(a.food,b.food);o.cardio=mergeDays(a.cardio,b.cardio);
   o.favs=mergeById(a.favs,b.favs);o.blocks=mergeById(a.blocks,b.blocks);
+  o.cfoods=mergeById(a.cfoods,b.cfoods);o.meals=mergeById(a.meals,b.meals);o.units=mergeById(a.units,b.units);
   o.targets=(b.targets.at||0)>(a.targets.at||0)?b.targets:a.targets;
   return o;
 }
