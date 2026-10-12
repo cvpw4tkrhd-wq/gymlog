@@ -119,7 +119,7 @@ body.typing nav.tabs,body.typing #timer{display:none}
 </head>
 <body>
 <main id="app"></main>
-<div id="timer" hidden><span style="font-weight:700">Vila</span><span class="t" id="tleft">0:00</span><button data-act="t30">+30 s</button><button data-act="tstop">Hoppa över</button></div>
+<div id="timer" hidden><span style="font-weight:700">Vila</span><span class="t" id="tleft">0:00</span><button data-act="tm15" aria-label="Minska vilan 15 sekunder">−15</button><button data-act="tp15" aria-label="Öka vilan 15 sekunder">+15</button><button data-act="tstop">Hoppa</button></div>
 <div id="toast" hidden></div>
 <nav class="tabs" id="tabs">
   <button data-tab="train">Träna</button>
@@ -1099,7 +1099,7 @@ function viewGuide(){
 <li>Klarar du inte det: behåll vikten och försök ta 1 rep mer per set.</li></ul></details>
 <details><summary>Uppvärmning, vila och tempo</summary><ul>
 <li>3–5 min lätt cardio. På första övningen: 1 set ca 50 % × 8, 1 set ca 70 % × 4.</li>
-<li>Tunga övningar 2 min vila, mellansvåra 90 s, pumpövningar 60–75 s. Vilotimern startar när du bockar av ett set.</li>
+<li>Tunga övningar 2 min vila, mellansvåra 90 s, pumpövningar 60–75 s. Vilotimern startar när du bockar av ett set. Justera pågående vila med −15 och +15. Under Backup kan du ändra all vilotid och slå på notiser när vilan är slut.</li>
 <li>Planka loggas i sekunder (skriv sekunderna i reps-rutan).</li></ul></details>
 <details><summary>Intensivperioder – vecka för vecka</summary><ul>
 <li><b>Vecka 1:</b> hitta vikterna, RIR 2 på alla övningar för muskelgruppen.</li>
@@ -1120,9 +1120,24 @@ function viewGuide(){
 }
 
 /* ---------- Backup ---------- */
+function restOffTxt(){const o=cfg.restOff||0;return o===0?'0 s':(o>0?'+':'−')+Math.abs(o)+' s';}
+function notifCard(){
+  const sup='Notification' in window, perm=sup?Notification.permission:'unsupported';
+  let st,btn='';
+  if(!sup)st='Den här webbläsaren stöder inte notiser.';
+  else if(perm==='denied')st='Notiser är blockerade. Tillåt dem för appen i telefonens inställningar.';
+  else if(perm==='granted'){st=cfg.notif?'Notiser är <b>på</b>.':'Notiser är <b>av</b>.';btn=`<button class="${cfg.notif?'ghost':'pri'}" data-act="notifon">${cfg.notif?'Stäng av notiser':'Slå på notiser'}</button>${cfg.notif?'<button class="ghost" data-act="notiftest">Testa (om 5 s)</button>':''}`;}
+  else{st='Notiser är inte aktiverade.';btn='<button class="pri" data-act="notifon">Aktivera notiser</button>';}
+  return `<div class="card"><h3>Vilotid och notiser</h3>
+  <p class="mute" style="font-size:14px">Vilotimern startar när du bockar av ett set, och du kan trycka −15 eller +15 under pågående vila. Här kan du också justera all vilotid från schemat.</p>
+  <div style="display:flex;align-items:center;gap:10px;margin:8px 0"><button class="ghost" data-act="roff-">−15 s</button><b style="min-width:70px;text-align:center">${restOffTxt()}</b><button class="ghost" data-act="roff+">+15 s</button></div>
+  <p style="margin-top:12px">${st}</p><div style="display:flex;gap:8px;flex-wrap:wrap">${btn}</div>
+  <p class="mute" style="font-size:13px;margin-top:10px">Med notiser får du en signal även när appen ligger i bakgrunden. På Android fungerar det oftast även när skärmen är släckt. På iPhone (iOS 16.4 eller senare, appen måste ligga på hemskärmen) pausar iOS ofta appar i bakgrunden, så notisen kan utebli. Appen försöker därför hålla skärmen tänd under passet, och när den är öppen spelas ett ljud och telefonen vibrerar där det stöds.</p></div>`;
+}
 function viewSettings(){
   const synced=cfg.last?new Date(cfg.last).toLocaleString('sv-SE'):'aldrig';
   return `<h2>Backup & inställningar</h2>
+${notifCard()}
 <div class="card"><h3>Molnbackup (GitHub Gist)</h3>
   <p class="mute" style="font-size:14px">Dina pass, kondition och kost sparas i en privat Gist på ditt GitHub-konto och synkas automatiskt när du har nät. Går telefonen sönder: installera appen på nya telefonen, klistra in samma token och tryck Synka.</p>
   <label class="f">Access token (klassisk token med behörigheten "gist")<input type="password" id="tok" autocomplete="off" value="${esc(cfg.token)}" placeholder="ghp_…"></label>
@@ -1141,9 +1156,14 @@ function viewSettings(){
    ===================================================================== */
 let tm=null,tEnd=0,ac=null,tt=null,wake=null;
 const fmt=s=>Math.floor(s/60)+':'+String(s%60).padStart(2,'0');
-function startTimer(sec){stopTimer();tEnd=Date.now()+sec*1000;$('#timer').hidden=false;tick();tm=setInterval(tick,250);}
+function swPost(msg){try{if('serviceWorker' in navigator)navigator.serviceWorker.ready.then(r=>{if(r.active)r.active.postMessage(msg);});}catch(e){}}
+function notifOn(){return !!cfg.notif&&('Notification' in window)&&Notification.permission==='granted';}
+let restBody='';
+function restNotify(){if(notifOn())swPost({type:'rest',end:tEnd,body:restBody||'Dags för nästa set'});}
+function startTimer(sec,body){stopTimer(false,true);restBody=body||'';tEnd=Date.now()+sec*1000;$('#timer').hidden=false;tick();tm=setInterval(tick,250);restNotify();}
+function adjTimer(ds){if(!tm)return;tEnd=Math.max(Date.now(),tEnd+ds*1000);tick();if(tm)restNotify();}
 function tick(){const left=Math.max(0,Math.ceil((tEnd-Date.now())/1000));$('#tleft').textContent=fmt(left);if(left<=0)stopTimer(true);}
-function stopTimer(fire){clearInterval(tm);tm=null;$('#timer').hidden=true;if(fire){beep();if(navigator.vibrate)navigator.vibrate([200,100,200]);toast('Vilan är slut – kör nästa set');}}
+function stopTimer(fire,silent){clearInterval(tm);tm=null;$('#timer').hidden=true;if(!silent&&(!fire||document.visibilityState!=='hidden'))swPost({type:'rest-cancel'});if(fire){beep();if(navigator.vibrate)navigator.vibrate([200,100,200]);toast('Vilan är slut – kör nästa set');}}
 function beep(){try{if(!ac)return;[0,0.28].forEach(t=>{const o=ac.createOscillator(),g=ac.createGain();o.frequency.value=880;g.gain.value=0.15;o.connect(g);g.connect(ac.destination);o.start(ac.currentTime+t);o.stop(ac.currentTime+t+0.18);});}catch(e){}}
 function toast(m){const el=$('#toast');el.textContent=m;el.hidden=false;clearTimeout(tt);tt=setTimeout(()=>el.hidden=true,2600);}
 async function keepAwake(){try{if('wakeLock' in navigator&&!wake){wake=await navigator.wakeLock.request('screen');wake.addEventListener('release',()=>wake=null);}}catch(e){}}
@@ -1163,7 +1183,8 @@ document.addEventListener('click',e=>{
   else if(a==='swtoday'){sw=mondayISO(today());render();}
   else if(a==='chk')toggleSet(t);
   else if(a==='finish'){const s=getSess(true);s.finished=!s.finished;touch(s);if(s.finished){toast('Bra jobbat!');stopTimer();}render();}
-  else if(a==='t30'){tEnd+=30000;tick();}
+  else if(a==='tp15')adjTimer(15);
+  else if(a==='tm15')adjTimer(-15);
   else if(a==='tstop')stopTimer();
   else if(a==='cadd'){
     const m=parseNum($('#cm').value),k=parseNum($('#ck').value);
@@ -1209,6 +1230,14 @@ document.addEventListener('click',e=>{
   else if(a==='fdel'){const d=fday(fdate,false);const x=d&&d.entries.find(z=>z.id===t.dataset.id);if(x){x.del=true;x.updatedAt=Date.now();ftouch(d);render();}}
   else if(a==='favdel'){const f=S.favs.find(x=>x.id===t.dataset.id);if(f){f.del=true;f.updatedAt=Date.now();persist();queueSync();render();}}
   else if(a==='fv'){ui.fv=t.dataset.v;if(t.dataset.go)ui.tab=t.dataset.go;render();window.scrollTo(0,0);}
+  else if(a==='notifon'){
+    if(!('Notification' in window)){toast('Notiser stöds inte här');return;}
+    if(Notification.permission==='granted'){cfg.notif=!cfg.notif;saveCfg();render();toast(cfg.notif?'Notiser på':'Notiser av');}
+    else if(Notification.permission==='default'){Notification.requestPermission().then(pm=>{cfg.notif=(pm==='granted');saveCfg();render();toast(pm==='granted'?'Notiser på':'Notiser tillåts inte');});}
+    else toast('Notiser är blockerade i telefonens inställningar');
+  }
+  else if(a==='notiftest'){if(!notifOn()){toast('Slå på notiser först');return;}swPost({type:'rest',end:Date.now()+5000,body:'Testnotis – så här ser vilan ut',force:true});toast('Testnotis om 5 sekunder. Lås gärna skärmen.');}
+  else if(a==='roff+'||a==='roff-'){cfg.restOff=Math.max(-60,Math.min(120,(cfg.restOff||0)+(a==='roff+'?15:-15)));saveCfg();render();}
   else if(a==='savetok'){cfg.token=$('#tok').value.trim();cfg.status='';saveCfg();syncNow(true);}
   else if(a==='sync')syncNow(true);
   else if(a==='export')exportJSON();
@@ -1260,7 +1289,7 @@ function toggleSet(btn){
   set.done=true;touch(s);btn.classList.add('on');row.classList.add('done');
   const x=planFor(s.plan).blocks.flat().find(z=>z.id===exId);
   if(prev>0&&now>prev*1.001)toast('🏆 Nytt PR på '+(EX[exId]?EX[exId][0]:exId));
-  if(x&&x.rest&&(!x.ss||x.tag.endsWith('2')))startTimer(x.rest);
+  if(x&&x.rest&&(!x.ss||x.tag.endsWith('2')))startTimer(Math.max(15,x.rest+(cfg.restOff||0)),(EX[exId]?EX[exId][0]:'Nästa set')+' – dags för nästa set');
 }
 
 /* ---------- Tangentbord: håll fältet i bild ---------- */
