@@ -1,5 +1,5 @@
 // Offline-cache: appen öppnas utan nät. Byt version (V) när du uppdaterar index.html.
-const V = 'armpass-v9';
+const V = 'armpass-v10';
 const ASSETS = ['./', './index.html', './kost.js', './livsmedel.json', './manifest.webmanifest', './icon-v2-192.png', './icon-v2-512.png', './icon-v2-maskable-512.png', './icon-v2-apple-180.png'];
 
 self.addEventListener('install', e => {
@@ -27,4 +27,40 @@ self.addEventListener('fetch', e => {
       return hit || net;
     })
   );
+});
+
+// Vilotimer-notis: sidan skickar sluttiden, och den här filen visar en notis när vilan är slut
+// (bara om appen inte är synlig, utom för testnotisen).
+let restT = null, restRes = null;
+function clearRest() {
+  if (restT) { clearTimeout(restT); restT = null; }
+  if (restRes) { restRes(); restRes = null; }
+}
+self.addEventListener('message', e => {
+  const d = e.data || {};
+  if (d.type !== 'rest' && d.type !== 'rest-cancel') return;
+  clearRest();
+  if (d.type === 'rest-cancel') return;
+  const ms = Math.max(0, (d.end || 0) - Date.now());
+  e.waitUntil(new Promise(res => {
+    restRes = res;
+    restT = setTimeout(() => {
+      restT = null; restRes = null;
+      self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(cs => {
+        if (!d.force && cs.some(c => c.visibilityState === 'visible')) return;
+        return self.registration.showNotification('Vilan är slut', {
+          body: d.body || 'Dags för nästa set',
+          tag: 'gymlog-rest', renotify: true, vibrate: [250, 120, 250],
+          icon: 'icon-v2-192.png', badge: 'icon-v2-192.png'
+        });
+      }).then(res, res);
+    }, ms);
+  }));
+});
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(cs => {
+    const c = cs.find(x => 'focus' in x);
+    return c ? c.focus() : self.clients.openWindow('./');
+  }));
 });
