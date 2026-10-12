@@ -1110,6 +1110,7 @@ function viewGuide(){
 <details><summary>Kost i appen</summary><ul>
 <li>Fliken Kost loggar protein, kalorier och fibrer per dag. Målen kan vara olika för träningsdagar och vilodagar.</li>
 <li><b>Bygg måltid</b> under Kost räknar ut kalorier, protein, kolhydrater, fett och fibrer från ingredienser och visar kvaliteten (grönt, gult, rött). Spara måltider och egna recept, till exempel granola, så loggas de med ett tryck. Näringsvärden kommer från Livsmedelsverkets livsmedelsdatabas (CC BY 4.0).</li>
+<li>Backup: GitHub-synken sköter sig själv. Under Backup kan du också spara en kopia i Filer (iCloud Drive), och där finns en guide för att få en automatisk kopia via Genvägar.</li>
 <li>Under Kost finns också <b>Kostlära</b>, som förklarar kalorier, protein, kolhydrater och fibrer och vad som är bra och dåligt val. <button class="ghost" data-act="fv" data-v="learn" data-go="food">Öppna Kostlära</button></li>
 <li>Dagtypen väljs automatiskt (helger och vilodagar är vila). Tryck på knappen för att byta manuellt.</li>
 <li>Spara vanliga måltider som favoriter, då loggar du dem med ett tryck.</li></ul></details>
@@ -1143,10 +1144,21 @@ ${notifCard()}
   <label class="f">Access token (klassisk token med behörigheten "gist")<input type="password" id="tok" autocomplete="off" value="${esc(cfg.token)}" placeholder="ghp_…"></label>
   <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="pri" data-act="savetok">Spara token & synka</button><button class="ghost" data-act="sync">Synka nu</button></div>
   <div class="status ${cfg.status&&cfg.status.startsWith('Fel')?'err':'ok'}">${esc(cfg.status||'')}</div>
-  <p class="mute" style="font-size:13px">Senast synkad: ${esc(synced)}${cfg.gistId?` · Gist ${esc(cfg.gistId.slice(0,7))}…`:''}<br>Token lagras bara på den här telefonen. Dela den inte.</p></div>
-<div class="card"><h3>Filbackup</h3>
-  <p class="mute" style="font-size:14px">Spara en kopia som fil, eller läs in en tidigare kopia. Inläsning slår ihop data, inget skrivs över i onödan.</p>
-  <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="ghost" data-act="export">Exportera JSON</button><label class="ghost" style="border:1px solid var(--line);border-radius:12px;padding:10px 14px;min-height:44px;display:inline-flex;align-items:center;cursor:pointer">Importera JSON<input type="file" accept="application/json,.json" id="imp" hidden></label></div></div>
+  <p class="mute" style="font-size:13px">Senast synkad: ${esc(synced)}${cfg.gistId?` · Gist ${esc(cfg.gistId.slice(0,7))}…`:''}<br>Token lagras bara på den här telefonen. Dela den inte.</p>
+  ${cfg.gistId?`<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px"><code style="font-size:13px;word-break:break-all">${esc(cfg.gistId)}</code><button class="ghost" data-act="copygist">Kopiera Gist-ID</button></div>`:''}</div>
+<div class="card"><h3>Filbackup (Filer / iCloud Drive)</h3>
+  <p class="mute" style="font-size:14px">Spara en kopia som fil, eller läs in en tidigare kopia. Inläsning slår ihop data, inget skrivs över i onödan. På iPhone väljer du <b>Spara i Filer</b> och sedan iCloud Drive. Vid inläsning väljer du filen från Filer.</p>
+  <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="pri" data-act="exportshare">Spara i Filer</button><button class="ghost" data-act="export">Ladda ner JSON</button><label class="ghost" style="border:1px solid var(--line);border-radius:12px;padding:10px 14px;min-height:44px;display:inline-flex;align-items:center;cursor:pointer">Importera JSON<input type="file" accept="application/json,.json" id="imp" hidden></label></div></div>
+<details><summary>Automatisk kopia i iCloud Drive (Genvägar)</summary>
+  <p class="mute" style="font-size:14px">En webbapp kan inte skriva direkt till iCloud Drive. Men iPhones app Genvägar kan hämta din backup från GitHub och spara den i iCloud Drive automatiskt, till exempel varje natt. Då har du en andra kopia utanför GitHub.</p>
+  <ol>
+  <li>Kopiera <b>Gist-ID</b> här ovan (visas efter första synken).</li>
+  <li>Öppna <b>Genvägar</b>, skapa en ny genväg och lägg till <b>Hämta innehåll från URL</b>. Adress: <code>https://api.github.com/gists/DITT-GIST-ID</code>. Under Visa mer: metod GET och rubrik <code>Authorization</code> med värdet <code>Bearer DIN-TOKEN</code>.</li>
+  <li>Lägg till <b>Hämta ordbokvärde</b> för <code>files</code>, sedan en till för <code>armpass-data.json</code>, och en till för <code>raw_url</code>.</li>
+  <li>Lägg till <b>Hämta innehåll från URL</b> igen, med raw_url som adress.</li>
+  <li>Lägg till <b>Spara fil</b>. Välj iCloud Drive och en mapp, stäng av "Fråga var den ska sparas" och slå på "Skriv över om filen finns".</li>
+  <li>Under <b>Automatisering</b> skapar du en personlig automatisering för valfri tid varje dag som kör genvägen, med "Kör direkt" om det finns.</li></ol>
+  <p class="mute" style="font-size:13px">Token ligger då i genvägen. Använd samma token med bara behörigheten "gist". Återställ genom att välja filen med Importera JSON ovan. Det är inte tvåvägssynk, och GitHub-synken ovan är fortfarande den som används.</p></details>
 <div class="card"><h3>Lägg på hemskärmen</h3>
   <p class="mute" style="font-size:14px"><b>iPhone (Safari):</b> Dela → Lägg till på hemskärmen.<br><b>Android (Chrome):</b> menyn ⋮ → Installera app / Lägg till på startskärmen.</p></div>`;
 }
@@ -1241,6 +1253,8 @@ document.addEventListener('click',e=>{
   else if(a==='savetok'){cfg.token=$('#tok').value.trim();cfg.status='';saveCfg();syncNow(true);}
   else if(a==='sync')syncNow(true);
   else if(a==='export')exportJSON();
+  else if(a==='exportshare')shareBackup();
+  else if(a==='copygist'){try{navigator.clipboard.writeText(cfg.gistId).then(()=>toast('Gist-ID kopierat'),()=>toast('Kunde inte kopiera'));}catch(e){toast('Kunde inte kopiera');}}
   else if(typeof kostAct==='function')kostAct(a,t,e);
 });
 document.addEventListener('change',e=>{
@@ -1334,6 +1348,19 @@ function exportJSON(){
   const blob=new Blob([JSON.stringify(S,null,2)],{type:'application/json'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='gymlog-backup-'+today()+'.json';
   document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+}
+async function shareBackup(){
+  const name='gymlog-backup-'+today()+'.json',text=JSON.stringify(S,null,2);
+  try{
+    for(const type of ['application/json','text/plain']){
+      const file=new File([text],name,{type});
+      if(navigator.canShare&&navigator.canShare({files:[file]})){
+        await navigator.share({files:[file],title:'Gymlog backup'});
+        toast('Välj "Spara i Filer" och sedan iCloud Drive');return;
+      }
+    }
+  }catch(e){if(e&&e.name==='AbortError')return;}
+  exportJSON();toast('Delning av filer stöds inte här, så filen laddades ner');
 }
 function importJSON(f){
   const r=new FileReader();
