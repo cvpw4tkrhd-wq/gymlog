@@ -110,6 +110,10 @@ svg.chart{width:100%;height:auto;display:block}
 .card ol li,details ol li{margin:6px 0}
 .lcout{background:var(--bg);border-radius:12px;padding:10px 12px;margin-top:10px;font-size:15px}
 .lcout div{padding:3px 0}
+.fields3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.tgh{margin:16px 0 6px;font-size:16px}
+body.typing{padding-bottom:55vh}
+body.typing nav.tabs,body.typing #timer{display:none}
 @media (prefers-reduced-motion:no-preference){.chk{transition:background .12s}}
 </style>
 </head>
@@ -515,7 +519,7 @@ const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
    TILLSTÅND (localStorage) + uppgradering från äldre format
    ===================================================================== */
 const KEY='armpass_v1', CKEY='armpass_cfg_v1', FILE='armpass-data.json';
-const defT=()=>({train:{p:150,k:2700,k2:2900},rest:{p:150,k:2700,k2:2900},at:0});
+const defT=()=>({train:{p:150,k:2700,k2:2900,f:30},rest:{p:150,k:2700,k2:2900,f:30},at:0});
 function load(k,def){try{const v=JSON.parse(localStorage.getItem(k));return v||def;}catch(e){return def;}}
 function upgrade(st){
   st=st||{};
@@ -537,6 +541,7 @@ function upgrade(st){
   st.v=2;
   st.blocks=st.blocks||[];st.cardio=st.cardio||{};st.food=st.food||{};st.favs=st.favs||[];
   if(!st.targets||!st.targets.train||!st.targets.rest||!st.targets.at)st.targets=defT();
+  ['train','rest'].forEach(k=>{if(st.targets[k].f===undefined)st.targets[k].f=30;});
   return st;
 }
 let S=upgrade(load(KEY,{v:2,sessions:{}}));
@@ -641,10 +646,16 @@ function bestE1(exId,exclude){
 /* =====================================================================
    VYER
    ===================================================================== */
+let lastKey='';
 function render(){
   document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===ui.tab));
   const v={train:viewTrain,plan:viewPlan,food:viewFood,prog:viewProg,guide:viewGuide,set:viewSettings}[ui.tab];
-  $('#app').innerHTML=v();
+  const app=$('#app'), key=ui.tab+'|'+(ui.tab==='food'?(ui.fv||'log'):'');
+  let open=null;const sy=window.scrollY;
+  if(key===lastKey)open=[...app.querySelectorAll('details')].map(d=>d.open);
+  app.innerHTML=v();
+  if(open){app.querySelectorAll('details').forEach((d,i)=>{if(open[i]!==undefined)d.open=open[i];});window.scrollTo(0,sy);}
+  lastKey=key;
 }
 
 /* ---------- Träna ---------- */
@@ -672,7 +683,7 @@ function viewTrain(){
   let h=`<div class="daynav"><button data-act="prev" aria-label="Föregående dag">‹</button><div class="mid"><b>${isT?'Idag · ':''}${DN[DAYS[dowOf(ds)]]} ${esc(fd(ds))}</b><br><small>${esc(P.label)}</small></div><button data-act="next" aria-label="Nästa dag">›</button></div>`;
   h+=`<div style="display:flex;gap:8px;justify-content:center;align-items:center;margin:6px 0">${isT?'':'<button class="ghost" data-act="today">Idag</button>'}<input type="date" class="dateinp" data-act="jump" value="${esc(ds)}" aria-label="Välj datum"></div>`;
   { const tt=ftot(ds), TT=S.targets[dayType(ds)];
-    h+=`<div class="banner" data-tab="food" data-fd="${esc(ds)}" style="cursor:pointer">${isT?'Idag':esc(fd(ds))}: protein <b>${fmtN(tt.p)}</b>/${fmtN(TT.p)} g · <b>${fmtN(tt.k)}</b>/${kr(TT)} kcal <span class="mute">– tryck för att logga mat</span></div>`; }
+    h+=`<div class="banner" data-tab="food" data-fd="${esc(ds)}" style="cursor:pointer">${isT?'Idag':esc(fd(ds))}: protein <b>${fmtN(tt.p)}</b>/${fmtN(TT.p)} g · <b>${fmtN(tt.k)}</b>/${kr(TT)} kcal · fibrer <b>${fmtD(tt.f)}</b>/${fmtN(TT.f||30)} g <span class="mute">– tryck för att logga mat</span></div>`; }
   h+=`<details><summary>Byt pass</summary><label class="f">Pass för den här dagen<select data-act="plansel">${(()=>{const o=planOptions(ds);if(!o.some(x=>x[0]===key))o.unshift([key,P.label+' · '+P.title]);return o.map(x=>`<option value="${esc(x[0])}"${x[0]===key?' selected':''}>${esc(x[1])}</option>`).join('');})()}</select></label><p class="mute" style="font-size:13px">Missade ett pass? Välj det här. Byte går bara om inga set är loggade.</p></details>`;
   h+=`<div class="focus"><b>${esc(P.title)}</b><br>${esc(P.focus)}${P.note?`<br><span class="mute">${esc(P.note)}</span>`:''}</div>`;
   if(P.rest){
@@ -855,9 +866,12 @@ function chart(pts){
 
 /* ---------- Kost ---------- */
 function fday(ds,create){let d=S.food[ds];if(!d&&create)d=S.food[ds]={entries:[],mode:'',updatedAt:Date.now()};return d;}
-function ftot(ds){const d=S.food[ds];let p=0,k=0;if(d)d.entries.forEach(e=>{if(!e.del){p+=+e.p||0;k+=+e.k||0;}});return {p,k};}
+function ftot(ds){const d=S.food[ds];let p=0,k=0,f=0;if(d)d.entries.forEach(e=>{if(!e.del){p+=+e.p||0;k+=+e.k||0;f+=+e.f||0;}});return {p,k,f};}
+const fmtD=n=>(Math.round(n*10)/10).toLocaleString('sv-SE');
+function metersHtml(ds){const T=S.targets[dayType(ds)],tot=ftot(ds);return meter('Protein',tot.p,T.p,'g')+meter('Kalorier',tot.k,T.k,'kcal',T.k2)+meter('Fibrer',tot.f,T.f||30,'g');}
+function refreshMeters(){const el=$('#meters');if(el)el.innerHTML=metersHtml(fdate);}
 function ftouch(d){d.updatedAt=Date.now();persist();queueSync();}
-function addEntry(ds,n,p,k){const d=fday(ds,true);d.entries.push({id:uid(),n:n||'',p:p===''?0:p,k:k===''?0:k,updatedAt:Date.now()});ftouch(d);}
+function addEntry(ds,n,p,k,f){const d=fday(ds,true);d.entries.push({id:uid(),n:n||'',p:p===''?0:p,k:k===''?0:k,f:(f===''||f===undefined)?0:f,updatedAt:Date.now()});ftouch(d);}
 function meter(label,val,tgt,unit,hi){
   const top=hi&&hi>tgt?hi:tgt, pct=top>0?Math.min(100,val/top*100):0;
   let cls='',txt='';
@@ -877,31 +891,44 @@ function viewFood(){
 }
 function lcHtml(w,k){
   if(w===''||k===''||w<=0||k<=0)return '<div class="mute">Fyll i kroppsvikt och kalorier.</div>';
-  const pLo=1.6*w,pHi=2.2*w,pGoal=2*w,fat=k*0.25/9,carb=Math.max(0,(k-4*pGoal-9*fat)/4);
+  const pLo=1.6*w,pHi=2.2*w,pGoal=2*w,fat=k*0.25/9,carb=Math.max(0,(k-4*pGoal-9*fat)/4),fib=k*4.184/1000*3;
   const g=n=>fmtN(n).replace('\u00a0',' ');
-  return `<div><b>Protein:</b> ${g(pLo)}–${g(pHi)} g per dag. Sikta på ca ${g(pGoal)} g (2,0 g per kg).</div>
+  return `<div><b>Kalorier:</b> ${g(k)} kcal per dag.</div>
+  <div><b>Protein:</b> ${g(pLo)}–${g(pHi)} g per dag. Sikta på ca ${g(pGoal)} g (2,0 g per kg).</div>
   <div><b>Per måltid:</b> ca ${g(0.3*w)}–${g(0.5*w)} g protein (3–5 måltider).</div>
   <div><b>Fett:</b> ca ${g(fat)} g (ungefär 25 % av energin).</div>
   <div><b>Kolhydrater:</b> ca ${g(carb)} g (${(carb/w).toFixed(1).replace('.',',')} g per kg), resten av energin.</div>
+  <div><b>Fibrer:</b> minst ${g(Math.max(25,Math.min(fib,35)))} g (3 g per MJ, rekommenderat 25–35 g).</div>
   <div class="mute" style="font-size:13px">Exempel, inte facit. Följ kroppsvikten i 2–3 veckor: ökar du mer än ca 0,5 kg per vecka kan du minska med 200 kcal, och står vikten still kan du öka med 200 kcal.</div>`;
 }
 function viewLearn(){
   const bwl=Object.values(S.sessions).filter(x=>x.bw!==''&&x.bw!==undefined&&+x.bw>0).sort((a,b)=>a.date<b.date?1:-1);
   const lw=bwl.length?+bwl[0].bw:75, lk=Math.round((S.targets.train.k+(S.targets.train.k2||S.targets.train.k))/2);
   const prot=[['Ägg (1 st)','ca 7 g'],['Kycklingfilé, 150 g','ca 40 g'],['Nötfärs 10 %, 150 g (rå vikt)','ca 28 g'],['Lax, 150 g','ca 30 g'],['Torsk, 150 g','ca 27 g'],['Tonfisk på burk, 1 burk','ca 25 g'],['Kvarg naturell, 250 g','ca 30 g'],['Cottage cheese, 200 g','ca 22 g'],['Skyr, 200 g','ca 22 g'],['Mjölk, 3 dl','ca 10 g'],['Tofu, 150 g','ca 18 g'],['Kokta linser, 2 dl','ca 13 g'],['Havregryn, 2 dl (80 g)','ca 11 g'],['Proteinpulver, 1 skopa (30 g)','ca 20–25 g'],['Mandel, 30 g','ca 6 g']];
-  return `<h2>Kostlära</h2><p class="mute">Hur maten fungerar när du vill bygga muskler, förklarat enkelt.</p>
+  const fib=[['Bruna bönor, 2,5 dl','ca 12 g'],['Kokta kikärtor, 2 dl','ca 8 g'],['Kokta linser, 2 dl','ca 6 g'],['Havregryn, 2 dl (80 g)','ca 8 g'],['Fullkornspasta, 75 g torr vikt','ca 6 g'],['Fullkornsbröd, 1 skiva','ca 2–3 g'],['Chiafrön, 1 msk','ca 4 g'],['Mandel, 30 g','ca 4 g'],['Broccoli, 100 g','ca 3 g'],['Morötter, 100 g','ca 3 g'],['Hallon, 135 g','ca 5 g'],['Gröna ärtor, 113 g','ca 5 g'],['Äpple med skal','ca 3 g'],['Banan','ca 2–3 g'],['Avokado, ½','ca 5 g'],['Potatis, 1 medelstor','ca 2 g'],['Vitt bröd, 1 skiva','ca 1 g'],['Vitt ris, kokt 2 dl','under 1 g']];
+  return `<h2>Kostlära</h2><p class="mute">Kalorier, kolhydrater, protein och fibrer – hur maten fungerar när du vill bygga muskler, förklarat enkelt.</p>
 <div class="card"><h3>5 snabba regler</h3><ol>
-<li>Ät protein i varje måltid, ca 25–40 g.</li>
-<li>Lägg kolhydraterna kring träningen. De är bränslet.</li>
-<li>Gör fiberrika kolhydrater till basen (havre, fullkorn, potatis, baljväxter, frukt).</li>
-<li>Välj mest oförädlad mat. Chark, godis och läsk får vara undantag.</li>
-<li>Ät tillräckligt och sov 7–9 timmar. Muskler byggs i vilan.</li></ol></div>
+<li><b>Kalorier:</b> ät tillräckligt. Ett litet överskott (2 700–2 900 kcal i schemat) är grunden för att bygga muskler.</li>
+<li><b>Protein:</b> ca 25–40 g i varje måltid, totalt minst 150 g per dag.</li>
+<li><b>Kolhydrater</b> är bränslet. Lägg dem kring träningen och välj fiberrika som bas.</li>
+<li><b>Fibrer:</b> 25–35 g per dag, och minst 500 g frukt och grönt.</li>
+<li>Välj mest oförädlad mat. Chark, godis och läsk får vara undantag. Sov 7–9 timmar, för muskler byggs i vilan.</li></ol></div>
 <details open><summary>Så växer muskler</summary><ul>
 <li><b>Träningen är signalen.</b> Tung belastning visar kroppen att musklerna behöver bli starkare.</li>
 <li><b>Maten är byggmaterial och energi.</b> Protein ger råvarorna, och kolhydrater och fett ger energin som behövs för bygget.</li>
 <li><b>Sömnen är byggtiden.</b> Musklerna växer inte under passet utan i timmarna efteråt.</li>
-<li>Muskeln växer när uppbyggnaden över tid är större än nedbrytningen. För att växa behövs oftast ett litet energiöverskott. Schemat siktar på 2 700–2 900 kcal per dag.</li>
+<li>Muskeln växer när uppbyggnaden över tid är större än nedbrytningen.</li>
 <li>Saknas något av de tre (träning, mat, vila) räcker inte de andra till.</li></ul></details>
+<details><summary>Kalorier – energin du bygger av</summary><ul>
+<li>En <b>kalori (kcal)</b> är ett mått på energi. Kroppen använder energi hela tiden: i vila (grundförbränning), i vardagsrörelser, i träning och för att smälta maten.</li>
+<li><b>Underhållsnivå</b> är den mängd du äter när vikten står still. Äter du mer går du upp i vikt, och äter du mindre går du ner.</li>
+<li>För att bygga muskler behövs oftast ett <b>litet överskott</b>, ca 200–400 kcal över underhåll, eftersom nybyggnad kostar energi. Schemat siktar på 2 700–2 900 kcal per dag.</li>
+<li><b>Energi per gram:</b> protein 4 kcal, kolhydrater 4 kcal, fett 9 kcal, alkohol 7 kcal.</li>
+<li><b>Hitta ditt underhåll:</b> ät ungefär lika mycket varje dag i två veckor och väg dig varje morgon (efter toa, före mat). Jämför veckosnittet. Stiger du mer än ca 0,5 kg per vecka kan du minska med 200 kcal, och står vikten still kan du öka med 200 kcal.</li>
+<li><b>Målet</b> är en ökning på ca 0,2–0,4 kg per vecka. Snabbare än så blir en större del fett.</li>
+<li>Kalorierna på förpackningar och i appar är uppskattningar, ofta med 10–20 % felmarginal. Väg maten de första veckorna så lär du dig vad portionerna väger.</li>
+<li><b>Svårt att äta tillräckligt?</b> Använd energität mat: olivolja, nötter, nötsmör, avokado, mjölk, torkad frukt och ris. Att dricka kalorier (mjölk, smoothie) går ofta lättare än att tugga dem.</li>
+<li>Under chockfasen är det extra viktigt att inte gå på underskott. På vilodagar kan du äta lite mindre.</li></ul></details>
 <details><summary>Protein och aminosyror</summary><ul>
 <li><b>Protein</b> består av långa kedjor av <b>aminosyror</b>, ungefär som lego. Vid matsmältningen bryts proteinet ner till aminosyror som tas upp i blodet. Kroppen bygger sedan sina egna proteiner av dem, till exempel muskler.</li>
 <li>Det finns 20 aminosyror. <b>Nio är essentiella</b>: kroppen kan inte tillverka dem, så de måste komma från maten (leucin, isoleucin, valin, lysin, metionin, fenylalanin, treonin, tryptofan och histidin).</li>
@@ -914,12 +941,22 @@ function viewLearn(){
 <li>Kolhydrater bryts ner till <b>glukos</b>, kroppens snabbaste energikälla, och särskilt viktig vid hård träning. Överskottet lagras som <b>glykogen</b> i musklerna och levern. Är lagren tomma blir passen tyngre och återhämtningen sämre.</li>
 <li><b>Tre roller för muskelväxt:</b> (1) bränsle, så att du orkar köra mer vikt och volym, (2) de sparar protein, för får kroppen nog med energi behöver den inte bryta ner protein till bränsle, och (3) insulinet de ger hjälper in aminosyror och glukos i muskeln och dämpar nedbrytning, men det är en bonus och inget krav.</li>
 <li><b>Hur mycket?</b> Vid regelbunden styrketräning ofta ca 3–5 g per kg kroppsvikt och dag (vid 75 kg: 225–375 g). Med schemats 2 700–2 900 kcal hamnar du ofta runt 4–5 g per kg.</li>
-<li>Äter du lite mer på träningsdagar och lite mindre på vilodagar följer du kroppens behov. Appen har därför olika mål för dem.</li></ul></details>
-<details><summary>Fett och energi</summary><ul>
-<li><b>Energi per gram:</b> protein 4 kcal, kolhydrater 4 kcal, fett 9 kcal, alkohol 7 kcal.</li>
-<li>Fett behövs för hormoner, cellernas väggar och vitaminerna A, D, E och K. Ungefär 20–35 % av energin brukar vara lagom. Välj mest omättat: olivolja, rapsolja, nötter, avokado och fet fisk.</li>
-<li>Begränsa mättat fett från chark, feta bakverk och friterad mat.</li>
-<li>Muskler växer bäst med ett litet överskott, ca 200–400 kcal över det du gör av med. Ökar du mer än ca 0,5 kg per vecka blir en större del fett.</li>
+<li>Äter du lite mer på träningsdagar och lite mindre på vilodagar följer du kroppens behov. Appen har därför olika mål för dem.</li>
+<li>Kolhydrater består av tre sorter: <b>stärkelse</b> (potatis, ris, bröd), <b>sockerarter</b> (frukt, mjölk, socker) och <b>fibrer</b>, som kroppen inte tar upp som energi men som är viktiga (se nästa avsnitt).</li></ul></details>
+<details><summary>Fibrer – det som ofta glöms</summary><ul>
+<li><b>Fibrer</b> är den del av växtfödan som kroppen inte kan bryta ner i tunntarmen. De ger få eller inga kalorier men gör mycket nytta.</li>
+<li><b>Lösliga fibrer</b> (havre, korn, råg, frukt, bär, rotfrukter, baljväxter) hjälper till att hålla blodsocker och kolesterol på bra nivåer och ger mättnad.</li>
+<li><b>Olösliga fibrer</b> (grova bröd, kli, fullkorn, skal på grönsaker) håller igång tarmen.</li>
+<li><b>Hur mycket?</b> Livsmedelsverket rekommenderar vuxna minst 25–35 g fibrer per dag, och minst 500 g frukt och grönt. Många svenskar äter bara ca 20 g.</li>
+<li><b>Varför viktigt när du tränar och äter mycket:</b> med 2 700–2 900 kcal är det lätt att fylla på med vitt bröd, vitt ris och sötsaker och få för lite fibrer. Det ger sämre mättnad, ojämn energi och trögare mage. Fibrer jämnar ut blodsockret och minskar på sikt risken för hjärt- och kärlsjukdom, typ 2-diabetes och tjock- och ändtarmscancer.</li>
+<li><b>Så får du i dig fibrer:</b> fullkorn (havre, rågbröd, fullkornspasta, fullkornsris), baljväxter flera gånger i veckan, grönsaker till varje måltid, frukt och bär, nötter och frön, och skalen på frukt och potatis.</li>
+<li><b>Öka stegvis och drick mycket.</b> Går du från lite till mycket fibrer på en dag kan magen bli uppblåst. Olösliga fibrer suger upp vätska, så drick till fiberrika måltider.</li>
+<li><b>Timing:</b> ät lite mindre fibrer och fett i måltiden precis före passet, eftersom det kan ge magbesvär. Resten av dagen äter du fiberrikt.</li>
+<li>Nyckelhålet är en bra genväg när du handlar bröd, pasta och flingor. Jämför fibrer per 100 g på förpackningen.</li></ul></details>
+<details><summary>Fett (kort)</summary><ul>
+<li>Fett behövs för hormoner, cellernas väggar och vitaminerna A, D, E och K. Ungefär 20–35 % av energin brukar vara lagom.</li>
+<li>Välj mest omättat: olivolja, rapsolja, nötter, avokado och fet fisk. Begränsa mättat fett från chark, feta bakverk och friterad mat.</li>
+<li>Fett har mer än dubbelt så mycket energi per gram som protein och kolhydrater (9 mot 4 kcal), så en klick olja eller nötsmör är ett enkelt sätt att få upp kalorierna.</li>
 <li>Drick regelbundet. Törst och uttorkning sänker både styrka och koncentration.</li></ul></details>
 <details><summary>Bra och dåligt protein – så avgör du</summary>
 <p>Ställ tre frågor:</p><ol>
@@ -934,7 +971,7 @@ function viewLearn(){
 <details><summary>Bra och dåliga kolhydrater</summary><ul>
 <li>Kolhydrater är inte bra eller dåliga i sig. Det handlar om hur mycket fibrer och näring som följer med och hur snabbt blodsockret stiger.</li>
 <li><span class="chip g">Bra bas</span> fullkorn (havre, råg, korn, fullkornsris och fullkornspasta, bulgur, quinoa), baljväxter, potatis och rotfrukter, frukt, bär och grönsaker. De ger fibrer, vitaminer, mineraler och jämn energi som mättar längre.</li>
-<li><span class="chip r">Sämre</span> mycket tillsatt socker: läsk, saft, godis, bakverk, söta flingor och mycket juice. Det är mycket energi men lite näring, och det mättar dåligt.</li>
+<li><span class="chip r">Sämre</span> mycket tillsatt socker: läsk, saft, godis, bakverk, söta flingor och mycket juice. Det är mycket energi men lite näring och få fibrer, och det mättar dåligt.</li>
 <li><b>Kring träning är snabba kolhydrater helt okej</b>: banan, vitt ris, vitt bröd, sylt, honung, torkad frukt och sportdryck. De fyller på glykogen snabbt och ligger lätt i magen.</li>
 <li><b>Så läser du förpackningen:</b> fullkorn som första ingrediens, fler fibrer är bättre, lite tillsatt socker och en kort ingredienslista. Nyckelhålet är en enkel genväg till hälsosammare val.</li>
 <li><b>GI</b> betyder hur snabbt en kolhydrat höjer blodsockret. Låg GI mättar ofta längre, men du behöver inte räkna på det.</li></ul></details>
@@ -942,26 +979,30 @@ function viewLearn(){
 <li><b>2–3 timmar före träning:</b> en måltid med kolhydrater och protein, måttligt med fett och fibrer. <b>30–60 minuter före:</b> något lätt, till exempel banan eller en macka.</li>
 <li><b>Efter träning (inom ett par timmar):</b> 25–40 g protein plus kolhydrater som fyller på glykogen. Det finns ingen exakt 30-minuters deadline, så ät en bra måltid inom några timmar.</li>
 <li><b>Före sömn:</b> kvarg eller cottage cheese ger protein långsamt under natten.</li>
-<li><b>Vilodagar:</b> samma protein, lite färre kolhydrater och kalorier.</li></ul></details>
+<li><b>Vilodagar:</b> samma protein och fibrer, lite färre kolhydrater och kalorier.</li></ul></details>
 <details><summary>Förslag på mat</summary>
-<p><b>Exempeldag, träningsdag (ca 150–160 g protein, ungefärligt):</b></p><ul>
+<p><b>Exempeldag, träningsdag (ca 150–160 g protein och 25–30 g fibrer, ungefärligt):</b></p><ul>
 <li><b>Frukost:</b> havregrynsgröt (2 dl gryn) på mjölk, banan och 2 ägg – ca 35 g protein.</li>
-<li><b>Mellanmål före träning:</b> kvarg 250 g med bär och en skiva bröd – ca 30 g.</li>
-<li><b>Efter träning:</b> proteinshake på mjölk och en banan – ca 25–30 g.</li>
-<li><b>Lunch:</b> kycklingfilé 130 g, ris och grönsaker – ca 40 g.</li>
-<li><b>Middag:</b> lax 150 g, potatis och broccoli – ca 30 g.</li></ul>
-<p class="mute" style="font-size:14px">Lägg till kolhydrater (mer ris och potatis) och fett (olivolja, nötter) för att nå kalorimålet.</p>
+<li><b>Mellanmål före träning:</b> kvarg 250 g med bär och en skiva fullkornsbröd – ca 30 g protein.</li>
+<li><b>Efter träning:</b> proteinshake på mjölk och en banan – ca 25–30 g protein.</li>
+<li><b>Lunch:</b> kycklingfilé 130 g, fullkornsris och grönsaker – ca 40 g protein.</li>
+<li><b>Middag:</b> lax 150 g, potatis och broccoli – ca 30 g protein.</li></ul>
+<p class="mute" style="font-size:14px">Lägg till kolhydrater (mer ris och potatis) och fett (olivolja, nötter) för att nå kalorimålet. Fyll upp fibrerna med baljväxter, fler grönsaker och frukt.</p>
 <p><b>Mellanmål med 20–30 g protein:</b> kvarg med bär, cottage cheese på knäckebröd, tonfisk på macka, ägg och bröd, proteinshake med banan, skyr med müsli.</p>
-<p><b>Vegetariskt eller veganskt:</b> tofuwok med ris, linsgryta med bröd, kikärtor och quinoa, ärtprotein med havre, edamamebönor, tempeh.</p>
-<p><b>Tallriksmodell (per måltid):</b> en handflata protein, 1–2 nävar kolhydrater, 2 nävar grönsaker och en tumme fett.</p></details>
+<p><b>Vegetariskt eller veganskt:</b> tofuwok med ris, linsgryta med bröd, kikärtor och quinoa, ärtprotein med havre, edamamebönor, tempeh. Här får du ofta mycket fibrer på köpet.</p>
+<p><b>Tallriksmodell (per måltid):</b> en handflata protein, 1–2 nävar kolhydrater (gärna fullkorn), 2 nävar grönsaker och en tumme fett.</p></details>
 <details><summary>Protein per portion (ungefärligt)</summary>
 <p class="mute" style="font-size:14px">Värdena varierar mellan produkter, så kolla förpackningen.</p>
 ${prot.map(r=>`<div class="kv"><span>${r[0]}</span><span>${r[1]}</span></div>`).join('')}</details>
+<details><summary>Fibrer per portion (ungefärligt)</summary>
+<p class="mute" style="font-size:14px">Värdena varierar mellan produkter, så kolla förpackningen. Målet är 25–35 g per dag.</p>
+${fib.map(r=>`<div class="kv"><span>${r[0]}</span><span>${r[1]}</span></div>`).join('')}</details>
 <details><summary>Vanliga myter</summary><ul>
 <li><b>"Proteinet måste in direkt efter passet."</b> Nej. Dagens totala mängd är viktigast.</li>
 <li><b>"Mer protein ger mer muskler."</b> Bara upp till ca 2,2 g per kg. Därefter hjälper kolhydrater, sömn och träning mer.</li>
 <li><b>"Kolhydrater gör dig fet."</b> Det är energiöverskottet som gör det. Kolhydrater är bränslet som får dig att orka träna.</li>
 <li><b>"Fett gör dig fet."</b> Samma sak. Fett behövs, men det är energirikt.</li>
+<li><b>"Fibrer är bara bra för magen."</b> De ger också jämnare blodsocker, mer mättnad och lägre risk för flera sjukdomar.</li>
 <li><b>"Växtprotein är sämre."</b> Det kan vara lika bra om mängden och variationen stämmer.</li>
 <li><b>"Man måste ha kosttillskott."</b> Mat först. Pulver är bara ett bekvämt sätt att nå målet, och kreatin är det som har bäst stöd.</li></ul></details>
 <div class="card"><h3>Räkna på dina siffror</h3>
@@ -969,40 +1010,40 @@ ${prot.map(r=>`<div class="kv"><span>${r[0]}</span><span>${r[1]}</span></div>`).
 <div class="lcout" id="lcout">${lcHtml(lw,lk)}</div></div>
 <p class="mute" style="font-size:13px">Allmän information, inte medicinsk rådgivning. Har du sjukdom, allergi eller tar medicin bör du prata med läkare eller dietist.</p>`;
 }
+function entryTxt(e){return `${fmtN(e.p)} g · ${fmtN(e.k)} kcal${e.f?' · '+fmtD(e.f)+' g fibrer':''}`;}
 function viewFoodLog(){
-  const ds=fdate,d=S.food[ds]||{entries:[],mode:''},type=dayType(ds),T=S.targets[type],tot=ftot(ds);
+  const ds=fdate,d=S.food[ds]||{entries:[],mode:''},type=dayType(ds);
   const isToday=ds===today();
   const lab=isToday?'Idag':parseISO(ds).toLocaleDateString('sv-SE',{weekday:'long',day:'numeric',month:'long'});
   let h=`<div class="daynav"><button data-act="fprev" aria-label="Föregående dag">‹</button><div class="mid"><b>${esc(lab)}</b><br><small>${esc(ds)}</small></div><button data-act="fnext" aria-label="Nästa dag"${isToday?' disabled style="opacity:.35"':''}>›</button></div>`;
   h+=`<div style="text-align:center;margin:6px 0"><button class="modechip" data-act="fmode">${type==='train'?'Träningsdag':'Vilodag'}${d.mode?'':' (auto)'}</button></div>`;
-  h+=`<div class="card">${meter('Protein',tot.p,T.p,'g')}${meter('Kalorier',tot.k,T.k,'kcal',T.k2)}</div>`;
-  const sl=d.sleep;
-  h+=`<div class="card"><label class="f">Sömn (timmar, mål 7–9 h)<input type="text" inputmode="decimal" data-fs="sleep" value="${sl===undefined||sl===''?'':esc(sl)}" placeholder="8"></label><small id="slmsg">${sl===undefined||sl===''?'':(sl>=7&&sl<=9?'✅ inom målet':sl<7?'under 7 h':'över 9 h')}</small></div>`;
+  h+=`<div class="card" id="meters">${metersHtml(ds)}</div>`;
   const favs=S.favs.filter(f=>!f.del);
   h+=`<div class="card"><h3>Lägg till</h3>`;
-  if(favs.length)h+=`<div class="favs">${favs.map(f=>`<button data-act="favadd" data-id="${f.id}">${esc(f.n)} · ${fmtN(f.p)} g · ${fmtN(f.k)} kcal</button>`).join('')}</div>`;
+  if(favs.length)h+=`<div class="favs">${favs.map(f=>`<button data-act="favadd" data-id="${f.id}">${esc(f.n)} · ${fmtN(f.p)} g · ${fmtN(f.k)} kcal${f.f?' · '+fmtD(f.f)+' g fibrer':''}</button>`).join('')}</div>`;
   h+=`<label class="f">Namn (valfritt)<input id="fn" type="text" placeholder="t.ex. Proteinshake" autocomplete="off"></label>
-  <div class="fields" style="margin-top:10px"><label class="f">Protein (g)<input id="fp" type="text" inputmode="decimal" placeholder="25"></label><label class="f">Kalorier (kcal)<input id="fk" type="text" inputmode="numeric" placeholder="200"></label></div>
+  <div class="fields3" style="margin-top:10px"><label class="f">Protein (g)<input id="fp" type="text" inputmode="decimal" placeholder="25"></label><label class="f">Kcal<input id="fk" type="text" inputmode="numeric" placeholder="200"></label><label class="f">Fibrer (g)<input id="ff" type="text" inputmode="decimal" placeholder="5"></label></div>
   <label class="chk2"><input type="checkbox" id="ffav"> Spara som favorit (kräver namn)</label>
   <button class="pri" data-act="fadd" style="width:100%">Lägg till</button></div>`;
   const ents=d.entries.filter(e=>!e.del);
   h+=`<div class="card"><h3>Dagens mat</h3>`;
   if(!ents.length)h+=`<p class="mute">Inget loggat än.</p>`;
-  ents.forEach(e=>{h+=`<div class="entry"><span>${esc(e.n||'Utan namn')}</span><span class="mute">${fmtN(e.p)} g · ${fmtN(e.k)} kcal</span><button data-act="fdel" data-id="${e.id}" aria-label="Ta bort">✕</button></div>`;});
+  ents.forEach(e=>{h+=`<div class="entry"><span>${esc(e.n||'Utan namn')}</span><span class="mute" style="font-size:14px">${entryTxt(e)}</span><button data-act="fdel" data-id="${e.id}" aria-label="Ta bort">✕</button></div>`;});
   h+=`</div>`;
+  const tg=(k,f,label,mode)=>`<label class="f">${label}<input type="text" inputmode="${mode||'numeric'}" data-tg="${k}.${f}" value="${S.targets[k][f]!==undefined?S.targets[k][f]:''}"></label>`;
   h+=`<details><summary>Mål</summary><p class="mute" style="font-size:14px">Olika mål för träningsdagar och vilodagar. Vilodag är helger och dagar utan styrkepass (du kan byta dagtyp manuellt).</p>
-  <div class="fields"><label class="f">Träning: protein, minst (g)<input type="text" inputmode="decimal" data-tg="train.p" value="${S.targets.train.p}"></label><label class="f">Träning: kcal från<input type="text" inputmode="numeric" data-tg="train.k" value="${S.targets.train.k}"></label>
-  <label class="f">Träning: kcal till<input type="text" inputmode="numeric" data-tg="train.k2" value="${S.targets.train.k2||S.targets.train.k}"></label><span></span>
-  <label class="f">Vila: protein, minst (g)<input type="text" inputmode="decimal" data-tg="rest.p" value="${S.targets.rest.p}"></label><label class="f">Vila: kcal från<input type="text" inputmode="numeric" data-tg="rest.k" value="${S.targets.rest.k}"></label>
-  <label class="f">Vila: kcal till<input type="text" inputmode="numeric" data-tg="rest.k2" value="${S.targets.rest.k2||S.targets.rest.k}"></label></div>
-  <p class="mute" style="font-size:13px">Startvärdena kommer från träningsschemat: minst 150 g protein och 2 700–2 900 kcal per dag (litet överskott). Justera efter hur kroppsvikten utvecklas.</p></details>`;
-  if(favs.length)h+=`<details><summary>Hantera favoriter</summary>${favs.map(f=>`<div class="entry"><span>${esc(f.n)}</span><span class="mute">${fmtN(f.p)} g · ${fmtN(f.k)} kcal</span><button data-act="favdel" data-id="${f.id}" aria-label="Ta bort favorit">✕</button></div>`).join('')}</details>`;
+  ${['train','rest'].map(k=>`<h3 class="tgh">${k==='train'?'Träningsdag':'Vilodag'}</h3>
+  <div class="fields">${tg(k,'p','Protein, minst (g)','decimal')}${tg(k,'f','Fibrer, minst (g)','decimal')}</div>
+  <div class="fields" style="margin-top:8px">${tg(k,'k','Kcal från')}${tg(k,'k2','Kcal till')}</div>`).join('')}
+  <p class="mute" style="font-size:13px">Startvärdena kommer från träningsschemat: minst 150 g protein och 2 700–2 900 kcal per dag (litet överskott). Fibrer: 25–35 g per dag rekommenderas av Livsmedelsverket. Justera efter hur kroppsvikten utvecklas.</p></details>`;
+  if(favs.length)h+=`<details><summary>Hantera favoriter</summary>${favs.map(f=>`<div class="entry"><span>${esc(f.n)}</span><span class="mute" style="font-size:14px">${entryTxt(f)}</span><button data-act="favdel" data-id="${f.id}" aria-label="Ta bort favorit">✕</button></div>`).join('')}</details>`;
   h+=`<div class="card"><h3>Senaste 7 dagarna</h3>`;
   for(let i=0;i<7;i++){
-    const k=addDays(ds,-i),t=dayType(k),tt2=S.targets[t],x=ftot(k),slp=S.food[k]&&S.food[k].sleep;
-    h+=`<div class="sess"><b>${esc(parseISO(k).toLocaleDateString('sv-SE',{weekday:'short',day:'numeric',month:'numeric'}))}</b> · ${t==='train'?'träning':'vila'}<br>${x.p||x.k?`${x.p>=tt2.p?'✅ ':''}${fmtN(x.p)} g protein (minst ${fmtN(tt2.p)}) · ${fmtN(x.k)} kcal (mål ${kr(tt2)})`:'<span class="mute">inget loggat</span>'}${slp!==undefined&&slp!==''?` · sömn ${String(slp).replace('.',',')} h`:''}</div>`;
+    const k=addDays(ds,-i),t=dayType(k),tt2=S.targets[t],x=ftot(k);
+    h+=`<div class="sess"><b>${esc(parseISO(k).toLocaleDateString('sv-SE',{weekday:'short',day:'numeric',month:'numeric'}))}</b> · ${t==='train'?'träning':'vila'}<br>${x.p||x.k||x.f?`${x.p>=tt2.p?'✅ ':''}${fmtN(x.p)} g protein (minst ${fmtN(tt2.p)}) · ${fmtN(x.k)} kcal (mål ${kr(tt2)}) · ${fmtD(x.f)} g fibrer (minst ${fmtN(tt2.f||30)})`:'<span class="mute">inget loggat</span>'}</div>`;
   }
-  return h+`</div>`;
+  h+=`</div><div style="text-align:center;margin:10px 0"><button class="ghost" data-act="fv" data-v="learn">Läs Kostlära: kalorier, kolhydrater, protein och fibrer</button></div>`;
+  return h;
 }
 
 /* ---------- Guide ---------- */
@@ -1064,13 +1105,13 @@ function viewGuide(){
 <li><b>Vecka 4:</b> deload, halva vikterna och halva seten. Tis och tors är vila.</li>
 <li>Känner du smärta i armbågar eller senor (inte bara muskelbränna): avbryt övningen och byt till en kabelvariant.</li></ul></details>
 <details><summary>Kost i appen</summary><ul>
-<li>Fliken Kost loggar protein, kalorier och sömn per dag. Målen kan vara olika för träningsdagar och vilodagar.</li>
-<li>Under Kost finns också <b>Kostlära</b>, som förklarar protein, aminosyror, kolhydrater och vad som är bra och dåligt val. <button class="ghost" data-act="fv" data-v="learn" data-go="food">Öppna Kostlära</button></li>
+<li>Fliken Kost loggar protein, kalorier och fibrer per dag. Målen kan vara olika för träningsdagar och vilodagar.</li>
+<li>Under Kost finns också <b>Kostlära</b>, som förklarar kalorier, protein, kolhydrater och fibrer och vad som är bra och dåligt val. <button class="ghost" data-act="fv" data-v="learn" data-go="food">Öppna Kostlära</button></li>
 <li>Dagtypen väljs automatiskt (helger och vilodagar är vila). Tryck på knappen för att byta manuellt.</li>
 <li>Spara vanliga måltider som favoriter, då loggar du dem med ett tryck.</li></ul></details>
 <details><summary>Mat, sömn och återhämtning</summary><ul>
 <li>Kalorier: 2 700–2 900 kcal per dag (litet överskott). Protein: minst 150 g per dag, fördelat på 3–4 mål.</li>
-<li>Sömn: 7–9 timmar per natt. Logga den under Kost.</li>
+<li>Fibrer: 25–35 g per dag. Sömn: 7–9 timmar per natt.</li>
 <li>Under chockveckan är det extra viktigt att inte gå på underskott. Kreatin (3–5 g/dag) är välstuderat och valfritt.</li></ul></details>`;
 }
 
@@ -1154,13 +1195,13 @@ document.addEventListener('click',e=>{
   else if(a==='fprev'||a==='fnext'){const d=addDays(fdate,a==='fnext'?1:-1);if(d<=today()){fdate=d;render();}}
   else if(a==='fmode'){const d=fday(fdate,true);d.mode=d.mode===''?'train':d.mode==='train'?'rest':'';ftouch(d);render();}
   else if(a==='fadd'){
-    const n=$('#fn').value.trim(),p=parseNum($('#fp').value),k=parseNum($('#fk').value);
-    if(p===''&&k===''){toast('Fyll i protein eller kalorier');return;}
-    addEntry(fdate,n,p,k);
-    if($('#ffav').checked){if(n){S.favs.push({id:uid(),n:n,p:p===''?0:p,k:k===''?0:k,updatedAt:Date.now()});persist();}else toast('Favorit kräver ett namn');}
+    const n=$('#fn').value.trim(),p=parseNum($('#fp').value),k=parseNum($('#fk').value),f=parseNum($('#ff').value);
+    if(p===''&&k===''&&f===''){toast('Fyll i protein, kalorier eller fibrer');return;}
+    addEntry(fdate,n,p,k,f);
+    if($('#ffav').checked){if(n){S.favs.push({id:uid(),n:n,p:p===''?0:p,k:k===''?0:k,f:f===''?0:f,updatedAt:Date.now()});persist();}else toast('Favorit kräver ett namn');}
     render();toast('Tillagt');
   }
-  else if(a==='favadd'){const f=S.favs.find(x=>x.id===t.dataset.id);if(f){addEntry(fdate,f.n,f.p,f.k);render();toast('Lade till '+f.n);}}
+  else if(a==='favadd'){const f=S.favs.find(x=>x.id===t.dataset.id);if(f){addEntry(fdate,f.n,f.p,f.k,f.f);render();toast('Lade till '+f.n);}}
   else if(a==='fdel'){const d=fday(fdate,false);const x=d&&d.entries.find(z=>z.id===t.dataset.id);if(x){x.del=true;x.updatedAt=Date.now();ftouch(d);render();}}
   else if(a==='favdel'){const f=S.favs.find(x=>x.id===t.dataset.id);if(f){f.del=true;f.updatedAt=Date.now();persist();queueSync();render();}}
   else if(a==='fv'){ui.fv=t.dataset.v;if(t.dataset.go)ui.tab=t.dataset.go;render();window.scrollTo(0,0);}
@@ -1177,7 +1218,7 @@ document.addEventListener('change',e=>{
     if(s&&hasDone(s)&&s.plan!==t.value){toast('Passet har loggade set – ta bort dem först');render();return;}
     const ns=getSess(true);ns.plan=t.value;ns.sets={};initSets(ns);touch(ns);render();toast('Pass bytt');
   }
-  else if(t.dataset.tg){const [k,f]=t.dataset.tg.split('.');const v=parseNum(t.value);if(v!==''&&v>0){S.targets[k][f]=v;S.targets.at=Date.now();persist();queueSync();render();toast('Mål sparat');}}
+  else if(t.dataset.tg){const [k,f]=t.dataset.tg.split('.');const v=parseNum(t.value);if(v!==''&&v>0){S.targets[k][f]=v;S.targets.at=Date.now();persist();queueSync();refreshMeters();}}
   else if(t.id==='imp'&&t.files[0])importJSON(t.files[0]);
 });
 document.addEventListener('input',e=>{
@@ -1193,9 +1234,6 @@ document.addEventListener('input',e=>{
     const s=getSess(true);s[el.dataset.sf]=el.dataset.sf==='bw'?parseNum(el.value):el.value;touch(s);
   } else if(el.dataset.lc){
     const o=$('#lcout');if(o)o.innerHTML=lcHtml(parseNum($('#lcw').value),parseNum($('#lck').value));
-  } else if(el.dataset.fs){
-    const d=fday(fdate,true);d[el.dataset.fs]=parseNum(el.value);ftouch(d);
-    const mg=$('#slmsg');if(mg&&el.dataset.fs==='sleep'){const v=d.sleep;mg.textContent=v===''?'':(v>=7&&v<=9?'✅ inom målet':v<7?'under 7 h':'över 9 h');}
   }
 });
 function toggleSet(btn){
@@ -1216,6 +1254,17 @@ function toggleSet(btn){
   if(prev>0&&now>prev*1.001)toast('🏆 Nytt PR på '+(EX[exId]?EX[exId][0]:exId));
   if(x&&x.rest&&(!x.ss||x.tag.endsWith('2')))startTimer(x.rest);
 }
+
+/* ---------- Tangentbord: håll fältet i bild ---------- */
+const isField=el=>el&&/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName)&&el.type!=='checkbox'&&el.type!=='file';
+let kbT=null,kbO=null;
+document.addEventListener('focusin',e=>{
+  const el=e.target;if(!isField(el))return;
+  clearTimeout(kbO);document.body.classList.add('typing');
+  clearTimeout(kbT);kbT=setTimeout(()=>{try{el.scrollIntoView({block:'center',behavior:'smooth'});}catch(_){el.scrollIntoView();}},350);
+});
+document.addEventListener('focusout',()=>{clearTimeout(kbO);kbO=setTimeout(()=>{if(!isField(document.activeElement))document.body.classList.remove('typing');},250);});
+if(window.visualViewport)window.visualViewport.addEventListener('resize',()=>{const el=document.activeElement;if(isField(el))setTimeout(()=>{try{el.scrollIntoView({block:'center'});}catch(_){}},60);});
 
 /* =====================================================================
    BACKUP: export, import, Gist
