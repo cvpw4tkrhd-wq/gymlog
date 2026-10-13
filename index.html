@@ -131,6 +131,7 @@ body.typing nav.tabs,body.typing #timer{display:none}
 </nav>
 
 <script src="kost.js"></script>
+<script src="ovningar.js"></script>
 <script>
 'use strict';
 /* =====================================================================
@@ -651,7 +652,7 @@ let lastKey='';
 function render(){
   document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===ui.tab));
   const v={train:viewTrain,plan:viewPlan,food:viewFood,prog:viewProg,guide:viewGuide,set:viewSettings}[ui.tab];
-  const app=$('#app'), key=ui.tab+'|'+(ui.tab==='food'?(ui.fv||'log'):'');
+  const app=$('#app'), key=ui.tab+'|'+(ui.tab==='food'?(ui.fv||'log'):'')+(ui.tab==='train'?ui.date:'');
   let open=null;const sy=window.scrollY;
   if(key===lastKey)open=[...app.querySelectorAll('details')].map(d=>d.open);
   app.innerHTML=v();
@@ -697,7 +698,7 @@ function viewTrain(){
       if(sup)h+=`<h3>Superset ${bl[0].ss}<span class="chip b">gör ${bl[0].tag} → ${bl[1].tag}, vila sedan</span></h3>`;
       bl.forEach(x=>{
         const e=EX[x.id]||[x.id,'',''], last=lastFor(x.id);
-        h+=`<div style="margin-top:${sup?10:0}px"><h3>${sup?esc(x.tag)+' · ':''}${esc(e[0])}<span class="chip">${esc(e[1])}</span>${x.maint?'<span class="chip a">underhåll</span>':''}</h3>`;
+        h+=`<div style="margin-top:${sup?10:0}px">${typeof exInfoHtml==='function'?exInfoHtml(x.id,(sup?esc(x.tag)+' · ':'')+esc(e[0]),e[1],x.maint):`<h3>${sup?esc(x.tag)+' · ':''}${esc(e[0])}<span class="chip">${esc(e[1])}</span>${x.maint?'<span class="chip a">underhåll</span>':''}</h3>`}`;
         h+=`<div class="exmeta">${x.sets} set × ${esc(x.reps)} reps · vila ${restLabel(x)} · ${esc(x.rir||'')}${x.tempo?' · '+esc(x.tempo):''}</div>`;
         h+=`<div class="cue">${esc(e[2])}</div>`;
         if(last)h+=`<div class="last">Förra: ${last.map(l=>(l.w===''?'0':l.w)+'×'+l.r).join(' · ')}</div>`;
@@ -1099,6 +1100,7 @@ function viewGuide(){
 <li>Klarar du inte det: behåll vikten och försök ta 1 rep mer per set.</li></ul></details>
 <details><summary>Uppvärmning, vila och tempo</summary><ul>
 <li>3–5 min lätt cardio. På första övningen: 1 set ca 50 % × 8, 1 set ca 70 % × 4.</li>
+<li>Tryck på en övnings rubrik i passet för att se bilder och steg-för-steg-instruktioner.</li>
 <li>Tunga övningar 2 min vila, mellansvåra 90 s, pumpövningar 60–75 s. Vilotimern startar när du bockar av ett set. Justera pågående vila med −15 och +15. Under Backup kan du ändra all vilotid och slå på notiser när vilan är slut.</li>
 <li>Planka loggas i sekunder (skriv sekunderna i reps-rutan).</li></ul></details>
 <details><summary>Intensivperioder – vecka för vecka</summary><ul>
