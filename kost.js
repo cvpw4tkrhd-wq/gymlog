@@ -292,7 +292,7 @@ function kostDayQuality(ds){
   if(!FDB)return '';
   const a=kDayAgg(ds);if(!a)return '';
   const Q=kQuality(a.T,false),cov=Math.round(a.an/Math.max(a.all,1)*100);
-  const tg=S.targets[dayType(ds)]||{};
+  const tg=targetsFor(ds)||{};
   let h=`<details><summary>Dagens kvalitet</summary><p class="mute" style="font-size:13px">Bygger på måltider som är byggda från ingredienser (${cov} % av dagens loggade kalorier).${cov<100?' Manuellt inmatade poster ingår inte.':''}</p>`;
   Q.rows.filter(r=>['p','fib','sug','sat','salt'].includes(r.k)).forEach(r=>{h+=`<div class="qrow"><span class="qd ${kLvl(r.lvl)}"></span><div><b>${esc(r.label)}</b> <span>${esc(r.val)}</span></div></div>`;});
   const T=a.T;
