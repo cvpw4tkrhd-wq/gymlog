@@ -302,7 +302,7 @@ const INT_DEFS = [
    B:[['machchest',3,'10–12',75],['inclfly',3,'10–12',75],['flyes',3,'10–12',75],['pushup',3,'10–12',75]],
    thu:{title:'Rygg & armar – underhåll',ex:[['row',3,'8',120],['pulldown',3,'10',90],['bbcurl',3,'8',90],['rope',3,'10',75]]},
    C:[[['lowfly',3,'12–15',75],['pecdeck',3,'12–15',75]],[['dbpullover',3,'12–15',75],['bar',3,'12–15',75]]]},
-  {id:'legs',name:'Ben',noun:'benövningar',grow:'benen',
+  {id:'legs',name:'Ben',noun:'benövningar',grow:'benen',weeks:3,wmap:[1,3,4],
    titles:['Ben A – tung styrka + bål','Ben B – volym & pump','Ben C – isolering & superset'],
    A:[['squat',4,'6–8',120,'h'],['rdl',4,'6–8',120,'h'],['legpress',3,'8',90],['lunge',3,'8',90]],
    addMon:[['abs',3,'max',60],['plank',3,'30–60 s',60]],
@@ -328,11 +328,27 @@ const INT_DEFS = [
    C:[[['bicycle',3,'12–15',75],['legraise',3,'12–15',75]],[['abs',3,'12–15',75],['mountain',3,'12–15',75]]]}
 ];
 function mkItem(r,focus){return {id:r[0],sets:r[1],reps:r[2],rest:r[3],arm:focus,heavy:r[4]==='h',maint:!focus};}
-function buildIntensive(def,w,d){
-  const label='Intensiv · '+def.name+' · vecka '+w+' av 4', focus=intFocus(def,w);
-  if(w===4&&(d==='tue'||d==='thu'))return {rest:true,title:d==='tue'?'Vila eller lätt promenad':'Vila',label,focus,note:'Deload-vecka. Återhämtning är träningen i dag.',blocks:[]};
+function intWeek(def,w0){return def.wmap?def.wmap[w0-1]:w0;}
+/* Kalorimål i förhållande till underhåll (kcal per dag) per veckotyp */
+const KCAL={build:{lo:0,hi:200},deload:{lo:-150,hi:0},burn:{lo:-500,hi:-350},burnbreak:{lo:-100,hi:100}};
+function cardioRx(kind,min,legs){
+  const txt={
+    lugn:'Lugn kondition (zon 2): du ska kunna prata i hela meningar. '+(legs?'Cykel, roddmaskin eller rask gång.':'Cykel, rask gång i uppförsbacke, roddmaskin eller ellipsmaskin.'),
+    intervall:'Intervaller: 5 min uppvärmning, sedan 8 × (1 min hårt, 1 min lugnt) och 5 min nedvarvning. '+(legs?'Cykla eller ro.':'Cykla, ro eller kör i backe.'),
+    promenad:'Lätt promenad och rörlighet. Du ska inte bli andfådd. Bra för återhämtningen.'}[kind];
+  return {min,kind,txt};
+}
+function buildIntensive(def,w0,d,opt){
+  opt=opt||{};
+  const W=def.weeks||4,w=intWeek(def,w0),legs=def.id==='legs';
+  const label=opt.label||('Intensiv · '+def.name+' · vecka '+w0+' av '+W),focus=intFocus(def,w);
+  const kc=Object.assign({},w===4?KCAL.deload:KCAL.build);
+  const cx=(k,m)=>opt.noCardio?undefined:cardioRx(k,m,legs);
+  if(d==='sat')return {rest:true,weekend:true,title:'Lördag – kondition (förbränning)',label,focus,note:'Gymmet är öppet hela helgen, så du kan ta ett längre konditionspass.',blocks:[],kc,cardio:cx('lugn',w===3?30:w===4?45:40)};
+  if(d==='sun')return {rest:true,weekend:true,title:'Söndag – aktiv återhämtning',label,focus,note:'Lätt rörelse och rörlighet. Du ska inte bli trött.',blocks:[],kc,cardio:cx('promenad',w===4?45:30)};
+  if(w===4&&(d==='tue'||d==='thu'))return {rest:true,title:'Lugn kondition (deload)',label,focus,note:'Deload-vecka. Återhämtning är träningen i dag, och lugn kondition hjälper.',blocks:[],kc,cardio:cx('lugn',30)};
   let title,list;
-  if(d==='mon'){title=def.titles[0];list=def.A.map(r=>mkItem(r,true)).concat((def.addMon||[]).map(r=>mkItem(r,false)));}
+  if(d==='mon'){title=def.titles[0];list=def.A.map(r=>mkItem(r,true)).concat(opt.noAdd?[]:(def.addMon||[]).map(r=>mkItem(r,false)));}
   else if(d==='tue'){title=def.tue.title;list=def.tue.ex.map(r=>mkItem(r,false));}
   else if(d==='wed'){title=def.titles[1];list=def.B.map(r=>mkItem(r,true));}
   else if(d==='thu'){title=def.thu.title;list=def.thu.ex.map(r=>mkItem(r,false));}
@@ -340,7 +356,7 @@ function buildIntensive(def,w,d){
   let note='';
   if(w===4){
     list=list.filter(x=>x.arm).map(x=>Object.assign({},x,{sets:Math.max(2,Math.ceil(x.sets/2)),rest:60,ss:null,deload:true,rir:'RIR 4+ – ska kännas lätt'}));
-    note=d==='mon'?'Ingen underhållsträning i dag. Halvera vikterna (ca 50 % av vecka 3) och seten.':d==='fri'?'Inga superset och inga dropset. Gör övningarna en i taget. Halva vikterna, halva seten.':'Mycket lätt. Halva vikterna (ca 50 % av vecka 3) och halva seten.';
+    note=d==='mon'?'Ingen underhållsträning i dag. Halvera vikterna (ca 50 % av förra veckan) och seten.':d==='fri'?'Inga superset och inga dropset. Gör övningarna en i taget. Halva vikterna, halva seten.':'Mycket lätt. Halva vikterna (ca 50 % av förra veckan) och halva seten.';
   } else {
     list.forEach(x=>{
       if(!x.arm){x.rir='RIR 2';return;}
@@ -368,20 +384,101 @@ function buildIntensive(def,w,d){
     if(x.ss){const g=[];while(i<list.length&&list[i].ss===x.ss){list[i].tag=x.ss+(g.length+1);g.push(list[i]);i++;}blocks.push(g);}
     else{blocks.push([x]);i++;}
   }
-  return {title,label,focus,note,blocks,deload:w===4};
+  const cardio=(d==='tue'||d==='thu')?cx('lugn',w===3?10:15):undefined;
+  return {title,label,focus,note,blocks,deload:w===4,kc,cardio};
+}
+
+/* ---------- Förbränning & underhåll (3 veckor underskott + 1 veckas underhåll) ---------- */
+const BURN_WEEKS={1:'Start av underskott',2:'Underskott',3:'Underskott',4:'Underhåll (diet break)'};
+const BURN_FOCUS={
+  1:'Förbränning & underhåll. Behåll vikterna du har och sluta 2 reps före failure (RIR 2). Konditionen tar hand om förbränningen. Kalorierna ligger under underhåll.',
+  2:'Behåll vikterna (RIR 1–2). Ett intervallpass ersätter ett lugnt konditionspass. Håll proteinet högt så att musklerna behålls.',
+  3:'Sista veckan med underskott. Behåll vikterna. Sjunker de mer än ca 10 %: ta bort ett set per övning i stället för att sänka vikten.',
+  4:'Underhållsvecka: kalorierna upp till underhåll och halva seten. Kroppen återhämtar sig inför nästa block.'};
+function buildBurn(w,d){
+  const label='Förbränning & underhåll · vecka '+w+' av 4',focus=BURN_FOCUS[w];
+  const kc=Object.assign({},w===4?KCAL.burnbreak:KCAL.burn,{p:w===4?150:165});
+  const cx=(k,m)=>cardioRx(k,m,false);
+  const LIFT={
+    mon:{title:'Överkropp – underhåll (tungt)',ex:[['chest',3,'8',120],['row',3,'8',120],['shpress',3,'8',90],['pulldown',3,'10',90],['rope',2,'10',75],['inclcurl',2,'10',75]]},
+    wed:{title:'Underkropp – underhåll (tungt)',ex:[['squat',3,'8',120],['rdl',3,'8',120],['lunge',3,'10',75],['calf',3,'12–15',60],['abs',3,'12–15',60]]},
+    fri:{title:'Helkropp – underhåll och pump',ex:[['dbpress',3,'10',90],['dbrow',3,'10',90],['goblet',3,'10',90],['latraise',2,'12–15',60],['hammer',2,'10–12',60],['plank',3,'30–60 s',60]]}
+  };
+  const C={
+    mon:cx('lugn',w===4?15:20),
+    tue:{t:'Kondition – lugn (zon 2)',c:cx('lugn',w===4?30:40)},
+    thu:w>=2&&w<=3?{t:'Kondition – intervall',c:cx('intervall',20)}:{t:'Kondition – lugn (zon 2)',c:cx('lugn',30)},
+    fri:cx('lugn',w===4?15:20),
+    sat:{t:'Kondition – lång och lugn',c:cx('lugn',w===4?40:50)},
+    sun:{t:'Aktiv återhämtning',c:cx('promenad',45)}
+  };
+  if(LIFT[d]){
+    const L=LIFT[d];
+    let list=L.ex.map(r=>Object.assign(mkItem(r,true),{maint:false,arm:true}));
+    if(w===4)list=list.map(x=>Object.assign({},x,{sets:Math.max(1,Math.ceil(x.sets/2)),deload:true,rir:'RIR 3+ – ska kännas lätt'}));
+    else list.forEach(x=>{x.rir=w===1?'RIR 2':'RIR 1–2';});
+    return {title:L.title,label,focus,note:'Behåll vikterna och gå aldrig till failure. Målet är att behålla muskler medan du förbränner fett.',blocks:list.map(x=>[x]),deload:w===4,kc,cardio:C[d]};
+  }
+  const o=C[d];
+  return {rest:true,weekend:d==='sat'||d==='sun',title:o.t,label,focus,note:d==='sat'||d==='sun'?'Gymmet är öppet hela helgen, så du kan ta längre pass.':'Ingen styrketräning i dag.',blocks:[],kc,cardio:o.c};
+}
+
+/* ---------- Muskelfokus-block med 1–2 valfria muskelgrupper, och pausblock ---------- */
+const MAINT={chest:[['chest',3,'8',120]],back:[['row',3,'8',120],['pulldown',3,'10',90]],legs:[['squat',3,'8',120],['rdl',3,'8',120]],shoulders:[['shpress',3,'8',90],['latraise',3,'12',60]],arms:[['hammer',2,'10',75],['rope',2,'10',75]],core:[['abs',3,'12–15',60],['plank',3,'30–60 s',60]]};
+function buildMulti(eff,fdef,names,W,w0,d){
+  const k=eff.length,w=intWeek(eff[0],w0),label='Muskelfokus · '+names+' · vecka '+w0+' av '+W;
+  if(k===1)return buildIntensive(eff[0],w0,d,{label});
+  const slots={mon:[0,'mon'],tue:[1,'mon'],wed:[0,'wed'],thu:[1,'wed'],fri:[0,'fri'],sat:[1,'fri']};
+  if(slots[d]){
+    const sl=slots[d],P=buildIntensive(eff[sl[0]],w0,sl[1],{label,noAdd:true,noCardio:true});
+    P.title=P.title.replace(/ \+ [a-zåäö]+$/i,'');
+    return P;
+  }
+  const gs=eff.map(x=>x.id),non=['chest','back','legs','shoulders','arms','core'].filter(g=>!gs.includes(g));
+  let list=[];non.forEach(g=>MAINT[g].forEach(r=>list.push(mkItem(r,false))));list=list.slice(0,7);
+  const kc=Object.assign({},w===4?KCAL.deload:KCAL.build);
+  if(w===4)list=list.map(x=>Object.assign({},x,{sets:Math.max(1,Math.ceil(x.sets/2)),deload:true,rir:'RIR 3+'}));
+  else list.forEach(x=>{x.rir='RIR 2';});
+  return {title:'Söndag – underhåll av övriga muskelgrupper',label,focus:intFocus(fdef,w),note:'Håll vikterna tunga men sluta 2 reps före failure. Det räcker för att behålla musklerna som inte är i fokus.',blocks:list.map(x=>[x]),deload:w===4,kc,cardio:cardioRx('lugn',30,false)};
+}
+function multiDef(type){
+  const parts=type.split('~'),gs=parts[1].split('+'),W=+parts[2]||4;
+  const defs=gs.map(g=>INT_DEFS.find(x=>x.id===g)).filter(Boolean);
+  const names=defs.map(x=>x.name).join(' + ');
+  const eff=defs.map(x=>Object.assign({},x,W===3?{weeks:3,wmap:[1,3,4]}:{weeks:4,wmap:null}));
+  const fdef={noun:'övningar för '+defs.map(x=>x.name.toLowerCase()).join(' och '),grow:defs.map(x=>x.grow).join(' och ')};
+  return {name:'Muskelfokus: '+names+(W===3?' (2+1)':' (3+1)'),weeks:W,weekend:true,multi:true,
+    desc:(W===3?'2 intensiva veckor + 1 deload':'3 intensiva veckor + 1 deload')+(defs.length>1?'. Två muskelgrupper tränas 3 gånger i veckan vardera, varannan dag. Söndagen är underhåll för övriga grupper.':'. Måndag, onsdag och fredag är fokusgruppens pass, tis och tors är underhåll, och helgen är kondition och återhämtning.'),
+    weekName:w=>INT_WEEKS[intWeek(eff[0],w)],focusFor:w=>intFocus(fdef,intWeek(eff[0],w)),
+    shocks:gs.map(g=>({g,from:0,to:W})),build:(w,d)=>buildMulti(eff,fdef,names,W,w,d)};
+}
+function pauseDef(type){
+  const N=Math.max(1,Math.min(4,+type.split('~')[1]||1));
+  return {name:'Paus – normalvecka',weeks:N,weekend:true,desc:'Normalveckor mellan blocken ('+N+' v).',weekName:w=>'Normalvecka',focusFor:w=>'Normalvecka: hela kroppen fördelad över veckan.',shocks:[],
+    build:(w,d)=>{const i=DAYS.indexOf(d),P=i<5?buildNormal(d):buildWeekend(d);return Object.assign({},P,{label:'Paus · normalvecka · vecka '+w+' av '+N});}};
 }
 
 /* ---------- Register över perioder ----------
    Lägg till fler perioder genom att lägga till en definition i INT_DEFS ovan,
    eller en egen post här med name, weeks, desc, weekName(vecka), focusFor(vecka), build(vecka, dag). */
-const BLOCKS = {};
+const BLOCKS_BASE = {};
+const BLOCKS = new Proxy(BLOCKS_BASE,{
+  get(o,k){if(typeof k==='string'&&!(k in o)){if(k.startsWith('m~'))o[k]=multiDef(k);else if(k.startsWith('pause~'))o[k]=pauseDef(k);}return o[k];},
+  has(o,k){return k in o||(typeof k==='string'&&(k.startsWith('m~')||k.startsWith('pause~')));}
+});
 INT_DEFS.forEach(def=>{
+  const W=def.weeks||4;
   BLOCKS[def.id]={
-    name:def.name+' – 4-veckors chockfas', weeks:4,
-    desc:'3 intensiva veckor + 1 deload-vecka (obligatorisk) med fokus på '+def.grow+'. Ersätter normalveckan måndag–fredag.',
-    weekName:w=>INT_WEEKS[w], focusFor:w=>intFocus(def,w), build:(w,d)=>buildIntensive(def,w,d)
+    name:def.name+' – '+(W===3?'2+1':'3+1')+' chockfas', weeks:W, weekend:true,
+    desc:(W===3?'2 intensiva veckor + 1 deload-vecka':'3 intensiva veckor + 1 deload-vecka')+' med fokus på '+def.grow+'. Tisdag och torsdag är underhåll med lite kondition, och helgen är kondition och återhämtning.'+(W===3?' Benen kräver mest återhämtning, så blocket är kortare.':''),
+    weekName:w=>INT_WEEKS[intWeek(def,w)], focusFor:w=>intFocus(def,intWeek(def,w)), build:(w,d)=>buildIntensive(def,w,d)
   };
 });
+BLOCKS.burn={
+  name:'Förbränning & underhåll', weeks:4, weekend:true, shocks:[],
+  desc:'3 veckor med kaloriunderskott + 1 vecka på underhåll. Tre styrkepass i veckan som behåller musklerna (överkropp, underkropp, helkropp) och fyra konditionspass. Gymmet används alla dagar, med längre pass på helgen.',
+  weekName:w=>BURN_WEEKS[w], focusFor:w=>BURN_FOCUS[w], build:buildBurn
+};
 
 /* ---------- 12-veckors blockperiodisering (3 block à 4 veckor, startar om efter vecka 12) ----------
    Block 1 Armar (v1–4) · Block 2 Ben & mage (v5–8) · Block 3 Rygg & bröst (v9–12) · därefter Block 1 igen.
@@ -489,7 +586,7 @@ BLOCKS.p12={
   shocks:[{g:'arms',from:0,to:4},{g:'legs',from:4,to:8},{g:'core',from:4,to:8},{g:'back',from:8,to:12},{g:'chest',from:8,to:12}],
   build:buildP12
 };
-INT_DEFS.forEach(def=>{BLOCKS[def.id].shocks=[{g:def.id,from:0,to:4}];});
+INT_DEFS.forEach(def=>{BLOCKS[def.id].shocks=[{g:def.id,from:0,to:def.weeks||4}];});
 
 function planFor(key){
   const p=String(key).split(':');
@@ -541,7 +638,7 @@ function upgrade(st){
     delete st.start;delete st.startAt;delete st.cycle;
   }
   st.v=2;
-  st.blocks=st.blocks||[];st.cardio=st.cardio||{};st.food=st.food||{};st.favs=st.favs||[];st.cfoods=st.cfoods||[];st.meals=st.meals||[];st.units=st.units||[];
+  st.blocks=st.blocks||[];st.cardio=st.cardio||{};st.food=st.food||{};st.favs=st.favs||[];st.cfoods=st.cfoods||[];st.meals=st.meals||[];st.units=st.units||[];st.body=st.body||[];if(!st.prefs)st.prefs={maint:0,auto:true,at:0};
   if(!st.targets||!st.targets.train||!st.targets.rest||!st.targets.at)st.targets=defT();
   ['train','rest'].forEach(k=>{if(st.targets[k].f===undefined)st.targets[k].f=30;});
   return st;
@@ -587,7 +684,7 @@ function restGuard(nb){
 }
 function defaultPlan(ds){
   const dow=dowOf(ds), bk=blockAt(ds);
-  if(dow>4)return 'w:'+(dow===5?'sat':'sun');
+  if(dow>4){if(bk&&bk.def.weekend)return 'b:'+bk.b.type+':'+bk.week+':'+DAYS[dow];return 'w:'+(dow===5?'sat':'sun');}
   if(bk)return 'b:'+bk.b.type+':'+bk.week+':'+DAYS[dow];
   return 'n:'+DAYS[dow];
 }
@@ -597,6 +694,7 @@ function planOptions(ds){
   DAYS.slice(0,5).forEach(d=>o.push(['n:'+d,'Normal · '+DN[d]+' – '+NORMAL[d].title]));
   const bk=blockAt(ds);
   if(bk)DAYS.slice(0,5).forEach(d=>{const k='b:'+bk.b.type+':'+bk.week+':'+d;o.push([k,'Period v'+bk.week+' · '+DN[d]+' – '+planFor(k).title]);});
+  if(bk&&bk.def.weekend)['sat','sun'].forEach(d=>{const k='b:'+bk.b.type+':'+bk.week+':'+d;o.push([k,'Period v'+bk.week+' · '+DN[d]+' – '+planFor(k).title]);});
   o.push(['w:sat','Kondition / vila']);
   return o;
 }
@@ -664,11 +762,21 @@ function render(){
 const BI=['bbcurl','dbcurl','inclcurl','hammer','cablecurl','scott'], TRI=['rope','bar','ohext','french','kick','cgbench'];
 function armPlanSets(mon){
   let bi=0,tri=0,inten=false;
-  for(let i=0;i<5;i++){const key=planKeyFor(addDays(mon,i));if(key[0]==='b')inten=true;planFor(key).blocks.flat().forEach(x=>{if(BI.includes(x.id))bi+=x.sets;if(TRI.includes(x.id))tri+=x.sets;});}
+  for(let i=0;i<7;i++){const key=planKeyFor(addDays(mon,i));if(key[0]==='b')inten=true;planFor(key).blocks.flat().forEach(x=>{if(BI.includes(x.id))bi+=x.sets;if(TRI.includes(x.id))tri+=x.sets;});}
   return {bi,tri,inten};
 }
 function restLabel(x){return x.restTxt||(x.rest>=120?(x.rest/60)+' min':x.rest+' s');}
 function kr(T){return T.k2&&T.k2>T.k?fmtN(T.k)+'–'+fmtN(T.k2):fmtN(T.k);}
+function bodyKg(){
+  const b=(S.body||[]).filter(x=>!x.del&&+x.w>0).sort((x,y)=>x.date<y.date?1:-1);if(b.length)return +b[0].w;
+  const q=Object.values(S.sessions).filter(x=>x.bw!==''&&x.bw!==undefined&&+x.bw>0).sort((x,y)=>x.date<y.date?1:-1);return q.length?+q[0].bw:75;
+}
+function cardioKcal(c){const met={lugn:5.5,intervall:7.5,promenad:3.5}[c.kind]||5;return met*bodyKg()*c.min/60;}
+function cardioRxHtml(ds,P){
+  const c=P.cardio;if(!c)return '';
+  const done=cardioMins(ds),pct=Math.min(100,done/c.min*100),nm=c.kind==='intervall'?'intervall':c.kind==='promenad'?'promenad':'lugn kondition',kc=cardioKcal(c);
+  return `<div class="card" style="outline:1px solid var(--blue)"><h3>Kondition: ${c.min} min ${nm}</h3><p style="font-size:14px;margin:6px 0">${esc(c.txt)}</p><div class="bar"><i class="${done>=c.min?'full':''}" style="width:${pct.toFixed(0)}%"></i></div><small class="mute">Loggat ${fmtN(done)} av ${c.min} min · förbrukning ca ${fmtN(kc*0.85)}–${fmtN(kc*1.15)} kcal. Logga under Kondition längre ned.</small></div>`;
+}
 function cardioMins(ds){const d=S.cardio[ds];return d?d.entries.filter(e=>!e.del).reduce((a,e)=>a+(+e.m||0),0):0;}
 function cardioCard(ds,open){
   const d=S.cardio[ds], ents=d?d.entries.filter(e=>!e.del):[], tot=cardioMins(ds);
@@ -684,10 +792,11 @@ function viewTrain(){
   const ds=ui.date, key=planKeyFor(ds), P=planFor(key), s=S.sessions['d'+ds], isT=ds===today();
   let h=`<div class="daynav"><button data-act="prev" aria-label="Föregående dag">‹</button><div class="mid"><b>${isT?'Idag · ':''}${DN[DAYS[dowOf(ds)]]} ${esc(fd(ds))}</b><br><small>${esc(P.label)}</small></div><button data-act="next" aria-label="Nästa dag">›</button></div>`;
   h+=`<div style="display:flex;gap:8px;justify-content:center;align-items:center;margin:6px 0">${isT?'':'<button class="ghost" data-act="today">Idag</button>'}<input type="date" class="dateinp" data-act="jump" value="${esc(ds)}" aria-label="Välj datum"></div>`;
-  { const tt=ftot(ds), TT=S.targets[dayType(ds)];
+  { const tt=ftot(ds), TT=targetsFor(ds);
     h+=`<div class="banner" data-tab="food" data-fd="${esc(ds)}" style="cursor:pointer">${isT?'Idag':esc(fd(ds))}: protein <b>${fmtN(tt.p)}</b>/${fmtN(TT.p)} g · <b>${fmtN(tt.k)}</b>/${kr(TT)} kcal · fibrer <b>${fmtD(tt.f)}</b>/${fmtN(TT.f||30)} g <span class="mute">– tryck för att logga mat</span></div>`; }
   h+=`<details><summary>Byt pass</summary><label class="f">Pass för den här dagen<select data-act="plansel">${(()=>{const o=planOptions(ds);if(!o.some(x=>x[0]===key))o.unshift([key,P.label+' · '+P.title]);return o.map(x=>`<option value="${esc(x[0])}"${x[0]===key?' selected':''}>${esc(x[1])}</option>`).join('');})()}</select></label><p class="mute" style="font-size:13px">Missade ett pass? Välj det här. Byte går bara om inga set är loggade.</p></details>`;
   h+=`<div class="focus"><b>${esc(P.title)}</b><br>${esc(P.focus)}${P.note?`<br><span class="mute">${esc(P.note)}</span>`:''}</div>`;
+  h+=cardioRxHtml(ds,P);
   if(P.rest){
     h+=`<div class="card"><p>${P.weekend?'Helg: kondition eller vila.':'Ingen styrketräning i dag. Lätt promenad är bra.'}</p></div>`+cardioCard(ds,true);
   } else {
@@ -760,6 +869,40 @@ function blockStatus(b){
   if(def.cycle&&b.repeat)return 'Pågår · varv '+(Math.floor(n/total)+1)+', vecka '+(Math.floor((n%total)/7)+1)+' av '+def.weeks;
   return 'Klar';
 }
+function nextStart(){
+  const cur=mondayISO(today());
+  const ends=S.blocks.filter(b=>!b.del&&BLOCKS[b.type]).map(blockEnd).filter(e=>e<'9999').sort();
+  const mx=ends.length?ends[ends.length-1]:'';
+  return mx&&mx>today()?mx:addDays(cur,7);
+}
+function bfType(f){
+  if(f.type==='multi')return f.groups.length?'m~'+f.groups.join('+')+'~'+f.len:'';
+  if(f.type==='pause')return 'pause~'+f.pause;
+  return f.type;
+}
+function builderHtml(){
+  const f=ui.bf=ui.bf||{type:'multi',groups:[],len:4,pause:2};
+  const G=[['arms','Armar'],['back','Rygg'],['chest','Bröst'],['legs','Ben'],['shoulders','Axlar'],['core','Bål']];
+  let h=`<div class="card"><h3>Lägg till ett block</h3>
+  <label class="f" style="margin-top:8px">Typ av block<select data-bf="type">${[['multi','Muskelfokus (välj 1–2 grupper)'],['burn','Förbränning & underhåll (3+1)'],['p12','12-veckorsprogrammet (hela cykeln)'],['pause','Paus: normalvecka']].map(o=>`<option value="${o[0]}"${f.type===o[0]?' selected':''}>${o[1]}</option>`).join('')}</select></label>`;
+  if(f.type==='multi'){
+    h+=`<p class="mute" style="font-size:14px;margin:10px 0 4px">Välj en eller två muskelgrupper som ska tränas maximalt under blocket.</p><div class="favs">${G.map(g=>`<label class="kchip" style="display:inline-flex;gap:6px;align-items:center;cursor:pointer${f.groups.includes(g[0])?';outline:2px solid var(--blue)':''}"><input type="checkbox" data-bf="grp" value="${g[0]}"${f.groups.includes(g[0])?' checked':''}> ${g[1]}</label>`).join('')}</div>
+    <label class="f">Längd<select data-bf="len"><option value="4"${+f.len===4?' selected':''}>3 intensiva veckor + 1 deload (4 v)</option><option value="3"${+f.len===3?' selected':''}>2 intensiva veckor + 1 deload (3 v)</option></select></label>`;
+    if(f.groups.length===1&&f.groups[0]==='legs')h+=`<p class="mute" style="font-size:13px">Benen kräver mest återhämtning, så ett rent benblock är 2+1 som standard.</p>`;
+    if(f.groups.length===2)h+=`<p class="mute" style="font-size:13px">Två grupper: den ena tränas mån, ons och fre, den andra tis, tors och lör. Söndagen är underhåll för övriga grupper.</p>`;
+  }
+  if(f.type==='pause')h+=`<label class="f" style="margin-top:10px">Antal veckor<select data-bf="pause">${[1,2,3,4].map(n=>`<option${+f.pause===n?' selected':''}>${n}</option>`).join('')}</select></label>`;
+  const ty=bfType(f);
+  if(ty){
+    const def=BLOCKS[ty];
+    h+=`<details open><summary>Så ser veckan ut (${def.weeks} veckor)</summary><p class="mute" style="font-size:13px">${esc(def.desc)}</p><ul>${DAYS.map(d=>{const P=def.build(1,d);return `<li><b>${DN[d]}:</b> ${esc(P.title)}${P.cardio?` <small class="mute">+ ${P.cardio.min} min ${P.cardio.kind==='intervall'?'intervall':P.cardio.kind==='promenad'?'promenad':'kondition'}</small>`:''}</li>`;}).join('')}</ul></details>`;
+  }
+  h+=`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="ghost" data-act="bnext">Direkt efter förra blocket</button><button class="ghost" data-act="bset" data-v="7">Nästa måndag</button></div>
+  <label class="f" style="margin-top:10px">Startdatum (en måndag)<input type="date" id="bs" value="${esc(nextStart())}"></label>`;
+  if(f.type==='p12')h+=`<label class="chk2"><input type="checkbox" id="brep" checked> Upprepa 12-veckorsprogrammet (starta om på Block 1 efter vecka 12)</label>`;
+  h+=`<button class="pri" data-act="badd" style="width:100%;margin-top:6px">${ty?'Lägg till block':'Välj minst en muskelgrupp'}</button></div>`;
+  return h;
+}
 function viewPlan(){
   const t=today(), cur=mondayISO(t);
   let h=`<h2>Schema</h2><div class="daynav" style="margin-top:10px"><button data-act="swprev" aria-label="Föregående vecka">‹</button><div class="mid"><b>Vecka ${isoWeek(sw)}</b><br><small>${esc(fd(sw))} – ${esc(fd(addDays(sw,6)))}</small></div><button data-act="swnext" aria-label="Nästa vecka">›</button></div>`;
@@ -774,21 +917,16 @@ function viewPlan(){
     h+=`<button class="dayrow${ds===t?' cur':''}" data-act="open" data-d="${ds}"><span><b>${DN[DAYS[i]]}</b> ${esc(fd(ds))}<br><small>${esc(P.title)} · ${esc(P.label)}</small></span><span class="st">${mark}</span></button>`;
   }
   h+=`<details><summary>Så ser normalveckan ut</summary><ul>${DAYS.slice(0,5).map(d=>`<li><b>${DN[d]}:</b> ${esc(NORMAL[d].title)} – ${NORMAL[d].ex.map(r=>esc(EX[r[0]][0])).join(', ')}</li>`).join('')}<li><b>Lördag:</b> kondition eller vila</li><li><b>Söndag:</b> vila (eller lätt kondition)</li></ul></details>`;
-  h+=`<h3 class="sub">Normalvecka eller intensivperiod</h3><p class="mute" style="font-size:14px">Utan inplanerad period kör du normalveckan. Du kan i stället köra hela <b>12-veckors blockperiodisering</b> (Armar → Ben & mage → Rygg & bröst, som sedan börjar om), eller en enskild 4-veckors chockfas för en muskelgrupp. En period ersätter normalveckan måndag–fredag. Helgerna är kondition eller vila.</p>`;
+  h+=`<h3 class="sub">Bygg ditt schema</h3><p class="mute" style="font-size:14px">Schemat är öppet. Lägg till block i den ordning du vill, så följer de på varandra. Det du inte planerar blir normalvecka. Gymmet kan användas alla dagar, med längre pass på fredag–söndag.</p>`;
   const bl=S.blocks.filter(b=>!b.del&&BLOCKS[b.type]).sort((a,b)=>a.start<b.start?-1:1);
   h+=`<div class="card">`;
-  if(!bl.length)h+=`<p class="mute">Ingen period inplanerad. Du kör normalveckan.</p>`;
-  bl.forEach(b=>{
+  if(!bl.length)h+=`<p class="mute">Inga block planerade. Du kör normalveckan.</p>`;
+  bl.forEach((b,i)=>{
     const def=BLOCKS[b.type];
-    h+=`<div class="entry"><span><b>${esc(def.name)}</b><br><small>${esc(fd(b.start))} – ${def.cycle&&b.repeat?'upprepas':esc(fd(addDays(b.start,def.weeks*7-1)))}</small></span><span class="chip b">${esc(blockStatus(b))}</span><button data-act="bdel" data-id="${b.id}" aria-label="Ta bort period">✕</button></div>`;
+    h+=`<div class="entry"><span><b>${i+1}. ${esc(def.name)}</b><br><small>${esc(fd(b.start))} – ${def.cycle&&b.repeat?'upprepas':esc(fd(addDays(b.start,def.weeks*7-1)))}</small></span><span class="chip b">${esc(blockStatus(b))}</span><button data-act="bdel" data-id="${b.id}" aria-label="Ta bort block">✕</button></div>`;
     if(def.cycle)h+=`<div style="margin:0 0 8px"><button class="ghost" data-act="brep" data-id="${b.id}">Upprepa efter vecka ${def.weeks}: ${b.repeat?'på':'av'}</button></div>`;
   });
-  h+=`</div><div class="card"><h3>Starta en intensivperiod</h3>
-  <label class="f" style="margin-top:8px">Period<select id="bt">${['p12'].concat(Object.keys(BLOCKS).filter(k=>k!=='p12')).map(k=>`<option value="${k}">${esc(BLOCKS[k].name)} (${BLOCKS[k].weeks} veckor)</option>`).join('')}</select></label>
-  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="ghost" data-act="bset" data-v="0">Denna måndag</button><button class="ghost" data-act="bset" data-v="7">Nästa måndag</button></div>
-  <label class="f" style="margin-top:10px">Startdatum (en måndag)<input type="date" id="bs" value="${esc(addDays(cur,7))}"></label>
-  <label class="chk2"><input type="checkbox" id="brep" checked> Upprepa 12-veckorsprogrammet (starta om på Block 1 efter vecka 12)</label>
-  <button class="pri" data-act="badd" style="width:100%;margin-top:4px">Lägg till period</button></div>`;
+  h+=`</div>`+builderHtml();
   { const wins=allWindows(),t2=today(),by={};
     wins.forEach(w=>{const c=by[w.g];if(w.from<=t2){if(!c||c.from>t2||w.from>c.from)by[w.g]=w;}else if(!c)by[w.g]=w;});
     const gs=Object.keys(by);
@@ -797,14 +935,14 @@ function viewPlan(){
       gs.forEach(g=>{const w=by[g],up=w.from>t2;h+=`<div class="sess"><b>${esc(GN[g][0].toUpperCase()+GN[g].slice(1))}</b>: ${up?'planerad':'senaste'} chockfas ${esc(fd(w.from))} – ${esc(fd(addDays(w.to,-1)))}<br><small>Nästa chockfas tidigast ${esc(fd(addDays(w.to,42)))} (6 v), helst ${esc(fd(addDays(w.to,56)))} (8 v)</small></div>`;});
       h+=`</div>`;
     } }
-  ['p12'].concat(Object.keys(BLOCKS).filter(k=>k!=='p12')).forEach(k=>{
+  ['p12','burn'].concat(Object.keys(BLOCKS).filter(k=>!['p12','burn'].includes(k)&&!k.includes('~'))).forEach(k=>{
     const def=BLOCKS[k], pw=def.previewWeeks||[1], all=[];for(let w=1;w<=def.weeks;w++)all.push(w);
     h+=`<details><summary>Förhandsvisa: ${esc(def.name)}</summary><p class="mute" style="font-size:14px">${esc(def.desc)}</p><p><b>Intensitet vecka för vecka</b></p><ul>${all.map(w=>`<li><b>Vecka ${w} (${esc(def.weekName(w))}):</b> ${esc(def.focusFor(w))}</li>`).join('')}</ul>`;
     pw.forEach(w=>{
       h+=`<p><b>Träningspassen${pw.length>1?' – '+esc(def.weekName(w).split(' · ')[0]):''}</b></p>`;
-      DAYS.slice(0,5).forEach(d=>{
+      (def.weekend?DAYS:DAYS.slice(0,5)).forEach(d=>{
         const P=def.build(w,d);
-        h+=`<p><b>${DN[d]}: ${esc(P.title)}</b></p><ul>${P.blocks.flat().map(x=>`<li>${x.tag?esc(x.tag)+'. ':''}${esc(EX[x.id][0])} – ${x.sets}×${esc(x.reps)} (vila ${esc(restLabel(x))})${x.maint?' <small>underhåll</small>':''}</li>`).join('')}</ul>`;
+        h+=`<p><b>${DN[d]}: ${esc(P.title)}</b>${P.cardio?` <small class="mute">+ ${P.cardio.min} min kondition</small>`:''}</p><ul>${P.blocks.flat().map(x=>`<li>${x.tag?esc(x.tag)+'. ':''}${esc(EX[x.id][0])} – ${x.sets}×${esc(x.reps)} (vila ${esc(restLabel(x))})${x.maint?' <small>underhåll</small>':''}</li>`).join('')}</ul>`;
       });
     });
     h+=`</details>`;
@@ -827,11 +965,32 @@ function weekRows(){
   Object.keys(S.cardio).forEach(d=>{const mm=cardioMins(d);if(mm)R(mondayISO(d)).cm+=mm;});
   return Object.keys(m).sort().reverse().slice(0,8).map(k=>Object.assign({k},m[k]));
 }
+function bodyEntries(){return (S.body||[]).filter(x=>!x.del).sort((a,b)=>a.date<b.date?-1:1);}
+const BMET={w:['Vikt','kg'],smm:['Skelettmuskelmassa','kg'],fat:['Fettmassa','kg'],pbf:['Kroppsfett','%'],visc:['Visceralt fett','nivå'],bmr:['Basalförbränning','kcal']};
+function bodyHtml(){
+  const es=bodyEntries(),m=ui.bm||'fat';
+  let h=`<div class="card"><h3>Kropp (InBody)</h3>`;
+  if(es.length){
+    const L=es[es.length-1],P=es.length>1?es[es.length-2]:null;
+    const line=k=>{if(L[k]===undefined||L[k]===null||L[k]==='')return '';const d=P&&P[k]!==undefined&&P[k]!==''?(+L[k])-(+P[k]):null;return `<div>${BMET[k][0]}: <b>${String(L[k]).replace('.',',')}</b> ${BMET[k][1]}${d!==null&&Math.abs(d)>0.001?` <small class="${d<0?'ok':'mute'}">(${d>0?'+':''}${(Math.round(d*10)/10).toString().replace('.',',')})</small>`:''}</div>`;};
+    h+=`<p class="mute" style="font-size:13px;margin:4px 0">Senaste mätning ${esc(fd(L.date))}${P?', förändring sedan '+esc(fd(P.date)):''}</p>${Object.keys(BMET).map(line).join('')}`;
+    const pts=es.filter(x=>x[m]!==undefined&&x[m]!==null&&x[m]!=='').map(x=>({d:x.date,b:+x[m]}));
+    h+=`<label class="f" style="margin-top:10px">Visa i graf<select data-act="bmsel">${Object.keys(BMET).map(k=>`<option value="${k}"${k===m?' selected':''}>${BMET[k][0]}</option>`).join('')}</select></label>${pts.length>1?chart(pts):'<p class="mute" style="font-size:13px">Grafen visas efter två mätningar.</p>'}`;
+    h+=`<details><summary>Alla mätningar</summary>${es.slice().reverse().map(x=>`<div class="entry"><span>${esc(fd(x.date))}</span><span class="mute" style="font-size:14px">${x.w||'–'} kg · fett ${x.fat||'–'} kg · muskler ${x.smm||'–'} kg</span><button data-act="bodydel" data-id="${x.id}" aria-label="Ta bort">✕</button></div>`).join('')}</details>`;
+  } else h+=`<p class="mute">Inga mätningar än. Lägg in resultatet från din InBody nedan.</p>`;
+  h+=`<details><summary>Lägg till mätning</summary><label class="f">Datum<input type="date" id="bdt" value="${today()}"></label>
+  <div class="fields" style="margin-top:8px"><label class="f">Vikt (kg)<input id="bw" type="text" inputmode="decimal"></label><label class="f">Skelettmuskelmassa (kg)<input id="bsmm" type="text" inputmode="decimal"></label>
+  <label class="f">Fettmassa (kg)<input id="bfat" type="text" inputmode="decimal"></label><label class="f">Kroppsfett (%)<input id="bpbf" type="text" inputmode="decimal"></label>
+  <label class="f">Visceralt fett (nivå)<input id="bvisc" type="text" inputmode="decimal"></label><label class="f">Basalförbränning (kcal)<input id="bbmr" type="text" inputmode="numeric"></label></div>
+  <button class="pri" data-act="bodyadd" style="width:100%;margin-top:10px">Spara mätning</button></details></div>`;
+  return h;
+}
 function viewProg(){
   const all=Object.values(S.sessions);let n=0,sets=0,vol=0;
   all.forEach(s=>{let any=false;Object.values(s.sets||{}).forEach(a=>a.forEach(x=>{if(x.done){any=true;sets++;vol+=(+x.w||0)*(+x.r||0);dropsOf(x).forEach(dd=>{vol+=dd.w*dd.r;});}}));if(any)n++;});
   const ids=Object.keys(EX).filter(id=>sessionsWithEx(id).length);
   let h=`<h2>Framsteg</h2><div class="stat" style="margin-top:10px"><div><b>${n}</b><small>pass</small></div><div><b>${sets}</b><small>set</small></div><div><b>${(vol/1000).toFixed(1).replace('.',',')}</b><small>ton lyft</small></div></div>`;
+  h+=bodyHtml();
   const wr=weekRows();
   if(wr.length){
     h+=`<div class="card"><h3>Vecka för vecka</h3>`;
@@ -870,7 +1029,14 @@ function chart(pts){
 function fday(ds,create){let d=S.food[ds];if(!d&&create)d=S.food[ds]={entries:[],mode:'',updatedAt:Date.now()};return d;}
 function ftot(ds){const d=S.food[ds];let p=0,k=0,f=0;if(d)d.entries.forEach(e=>{if(!e.del){p+=+e.p||0;k+=+e.k||0;f+=+e.f||0;}});return {p,k,f};}
 const fmtD=n=>(Math.round(n*10)/10).toLocaleString('sv-SE');
-function metersHtml(ds){const T=S.targets[dayType(ds)],tot=ftot(ds);return meter('Protein',tot.p,T.p,'g')+meter('Kalorier',tot.k,T.k,'kcal',T.k2)+meter('Fibrer',tot.f,T.f||30,'g');}
+function targetsFor(ds){
+  const type=dayType(ds),base=S.targets[type],pr=S.prefs;
+  if(!pr||!pr.auto||!(pr.maint>0))return base;
+  const P=planFor(planKeyFor(ds));if(!P||!P.kc)return base;
+  const r10=n=>Math.round(n/10)*10;
+  return Object.assign({},base,{k:r10(pr.maint+P.kc.lo),k2:r10(pr.maint+P.kc.hi),p:P.kc.p||base.p,note:'Mål från blocket: '+P.label+' ('+(P.kc.hi<0?'underskott':P.kc.lo<0?'lugn vecka':'underhåll till +'+P.kc.hi+' kcal')+')'});
+}
+function metersHtml(ds){const T=targetsFor(ds),tot=ftot(ds);return meter('Protein',tot.p,T.p,'g')+meter('Kalorier',tot.k,T.k,'kcal',T.k2)+meter('Fibrer',tot.f,T.f||30,'g');}
 function refreshMeters(){const el=$('#meters');if(el)el.innerHTML=metersHtml(fdate);}
 function ftouch(d){d.updatedAt=Date.now();persist();queueSync();}
 function addEntry(ds,n,p,k,f){const d=fday(ds,true);d.entries.push({id:uid(),n:n||'',p:p===''?0:p,k:k===''?0:k,f:(f===''||f===undefined)?0:f,updatedAt:Date.now()});ftouch(d);}
@@ -1021,6 +1187,7 @@ function viewFoodLog(){
   let h=`<div class="daynav"><button data-act="fprev" aria-label="Föregående dag">‹</button><div class="mid"><b>${esc(lab)}</b><br><small>${esc(ds)}</small></div><button data-act="fnext" aria-label="Nästa dag"${isToday?' disabled style="opacity:.35"':''}>›</button></div>`;
   h+=`<div style="text-align:center;margin:6px 0"><button class="modechip" data-act="fmode">${type==='train'?'Träningsdag':'Vilodag'}${d.mode?'':' (auto)'}</button></div>`;
   h+=`<div class="card" id="meters">${metersHtml(ds)}</div>`;
+  h+=(()=>{const T=targetsFor(ds);return T.note?`<p class="mute" style="font-size:13px;margin:-6px 4px 8px">${esc(T.note)}</p>`:'';})();
   h+=(typeof kostDayQuality==='function'?kostDayQuality(ds):'');
   const favs=S.favs.filter(f=>!f.del);
   h+=`<div class="card"><h3>Snabb inmatning</h3><button class="ghost" data-act="fv" data-v="build" style="width:100%;margin-bottom:8px">Bygg måltid från ingredienser →</button>`;
@@ -1036,6 +1203,10 @@ function viewFoodLog(){
   h+=`</div>`;
   const tg=(k,f,label,mode)=>`<label class="f">${label}<input type="text" inputmode="${mode||'numeric'}" data-tg="${k}.${f}" value="${S.targets[k][f]!==undefined?S.targets[k][f]:''}"></label>`;
   h+=`<details><summary>Mål</summary><p class="mute" style="font-size:14px">Olika mål för träningsdagar och vilodagar. Vilodag är helger och dagar utan styrkepass (du kan byta dagtyp manuellt).</p>
+  <h3 class="tgh">Automatiska mål från blocket</h3>
+  <label class="chk2"><input type="checkbox" data-pf="auto"${S.prefs.auto?' checked':''}> Låt kalorimålet följa blocket (underskott i förbränningsblock, underhåll till +200 i muskelblock)</label>
+  <label class="f">Underhållskalorier (kcal per dag)<input type="text" inputmode="numeric" data-pf="maint" value="${S.prefs.maint||''}" placeholder="t.ex. 2 600"></label>
+  <p class="mute" style="font-size:13px">Underhåll är vad du äter när vikten står still. Är fältet tomt används målen nedan. Följ vikten i några veckor och justera.</p>
   ${['train','rest'].map(k=>`<h3 class="tgh">${k==='train'?'Träningsdag':'Vilodag'}</h3>
   <div class="fields">${tg(k,'p','Protein, minst (g)','decimal')}${tg(k,'f','Fibrer, minst (g)','decimal')}</div>
   <div class="fields" style="margin-top:8px">${tg(k,'k','Kcal från')}${tg(k,'k2','Kcal till')}</div>`).join('')}
@@ -1043,7 +1214,7 @@ function viewFoodLog(){
   if(favs.length)h+=`<details><summary>Hantera favoriter</summary>${favs.map(f=>`<div class="entry"><span>${esc(f.n)}</span><span class="mute" style="font-size:14px">${entryTxt(f)}</span><button data-act="favdel" data-id="${f.id}" aria-label="Ta bort favorit">✕</button></div>`).join('')}</details>`;
   h+=`<div class="card"><h3>Senaste 7 dagarna</h3>`;
   for(let i=0;i<7;i++){
-    const k=addDays(ds,-i),t=dayType(k),tt2=S.targets[t],x=ftot(k);
+    const k=addDays(ds,-i),t=dayType(k),tt2=targetsFor(k),x=ftot(k);
     h+=`<div class="sess"><b>${esc(parseISO(k).toLocaleDateString('sv-SE',{weekday:'short',day:'numeric',month:'numeric'}))}</b> · ${t==='train'?'träning':'vila'}<br>${x.p||x.k||x.f?`${x.p>=tt2.p?'✅ ':''}${fmtN(x.p)} g protein (minst ${fmtN(tt2.p)}) · ${fmtN(x.k)} kcal (mål ${kr(tt2)}) · ${fmtD(x.f)} g fibrer (minst ${fmtN(tt2.f||30)})`:'<span class="mute">inget loggat</span>'}</div>`;
   }
   h+=`</div><div style="text-align:center;margin:10px 0"><button class="ghost" data-act="fv" data-v="learn">Läs Kostlära: kalorier, kolhydrater, protein och fibrer</button></div>`;
@@ -1069,6 +1240,22 @@ function viewGuide(){
 <li><b>Block 2 – Ben &amp; mage (vecka 5–8):</b> underkroppsstyrka och volym samt djup magmuskulatur. Armar underhålls med extremt låg volym. Vecka 7: failure på sista setet i benpress och lårcurl, och benspark avslutas med trippelt dropset.</li>
 <li><b>Block 3 – Rygg &amp; bröst (vecka 9–12):</b> bredd och tjocklek. Armarna får underhåll via tunga baslyft, ingen isolerad armträning. Vecka 11: sista setet i bänkpress och latsdrag till failure, och fredagens kabelövningar till total utmattning. Vecka 12: mycket lätt med halverad volym.</li>
 <li><b>Vecka 13+: starta om på Block 1 (Armar).</b> Armarna är nu 100 % utvilade, ledvätskan i armbågarna är återställd och musklerna är extremt känsliga för direkt volym igen.</li></ul></details>
+<details><summary>Bygg ditt eget schema (block)</summary><ul>
+<li>Under Schema är schemat öppet. Lägg till block i den ordning du vill, så följer de på varandra. Det du inte planerar blir normalvecka.</li>
+<li><b>Muskelfokus:</b> välj 1–2 muskelgrupper. En grupp tränas mån, ons och fre (pass A, B och C), med underhåll tis och tors. Två grupper delar veckan: den första mån, ons och fre, den andra tis, tors och lör. Söndagen är då underhåll för övriga grupper.</li>
+<li><b>3+1</b> betyder 3 intensiva veckor + 1 deload. Ett rent benblock är <b>2+1</b>, eftersom benen kräver mest återhämtning. Du kan ändra längden själv.</li>
+<li><b>Förbränning och underhåll:</b> 3 veckor med kaloriunderskott och 1 vecka på underhåll. Tre tunga men korta styrkepass behåller musklerna, och fyra konditionspass förbränner. Lördagens långa kondition och söndagens promenad utnyttjar att gymmet är öppet hela helgen.</li>
+<li><b>Paus</b> lägger in normalvecka mellan blocken.</li>
+<li>Kalorimålet följer blocket om du anger underhållskalorier under Kost → Mål.</li></ul></details>
+<details><summary>Kondition och förbränning</summary><ul>
+<li>I blocken står ett konditionsrecept överst i passet när det är dags, till exempel <b>40 min lugn kondition</b>. Lugn (zon 2) betyder att du kan prata i hela meningar.</li>
+<li>Intervaller: 5 min uppvärmning, 8 × (1 min hårt, 1 min lugnt) och 5 min nedvarvning. Appen visar uppskattad förbrukning utifrån din vikt.</li>
+<li>Förbränning kräver ett kaloriunderskott. I muskelblock ligger kalorierna vid underhåll upp till +200 kcal, och i förbränningsblocket ca 350–500 kcal under underhåll.</li>
+<li>Under benblock: välj cykel, rodd eller gång, och undvik hårda intervaller dagen före benpass.</li></ul></details>
+<details><summary>Kropp (InBody)</summary><ul>
+<li>Under Framsteg → Kropp lägger du in dina InBody-mätningar och ser förändringen över tid.</li>
+<li>Mät under likartade förhållanden (samma tid på dagen, före mat och träning), eftersom vätskebalansen påverkar resultatet.</li>
+<li>Fettmassa och skelettmuskelmassa säger mer än vikten. Målet i förbränningsblock är lägre fettmassa med bibehållen muskelmassa.</li></ul></details>
 <details><summary>Vila mellan chockfaser (undvik överansträngning)</summary><ul>
 <li>Efter en deload-vecka är musklerna återhämtade, men senor, fästen och centrala nervsystemet behöver mer tid efter den extrema volymen. Vänta <b>minst 6–8 veckor</b> innan du kör en ny liknande chockfas för samma muskelgrupp. Appen varnar om du planerar en för tidig chockfas.</li>
 <li><b>Varför:</b> senor och ligament (särskilt runt armbågarna) har sämre blodflöde än muskler och behöver flera veckor för att anpassa sig. Dessutom vänjer sig kroppen snabbt vid extrem stress. Chockar du armarna igen direkt svarar de sämre, och du behöver nollställa känsligheten för träningsvolym.</li>
@@ -1209,18 +1396,21 @@ document.addEventListener('click',e=>{
   }
   else if(a==='cdel'){const d=S.cardio[ui.date];const x=d&&d.entries.find(z=>z.id===t.dataset.id);if(x){x.del=true;x.updatedAt=Date.now();d.updatedAt=Date.now();persist();queueSync();render();}}
   else if(a==='bset'){const el=$('#bs');if(el)el.value=addDays(mondayISO(today()),+t.dataset.v);}
+  else if(a==='bnext'){const el=$('#bs');if(el)el.value=nextStart();}
   else if(a==='badd'){
-    const type=$('#bt').value,def=BLOCKS[type];let start=$('#bs').value;
+    const f=ui.bf||{type:'multi',groups:[],len:4,pause:2},type=bfType(f);
+    if(!type){toast('Välj minst en muskelgrupp');return;}
+    const def=BLOCKS[type];let start=$('#bs').value;
     if(!start){toast('Välj ett startdatum');return;}
     const mon=mondayISO(start);if(mon!==start){start=mon;toast('Startar måndagen '+fd(start));}
     const repeat=!!(def.cycle&&$('#brep')&&$('#brep').checked);
     const nb={id:uid(),type,start,repeat,updatedAt:Date.now()},nEnd=blockEnd(nb);
     const clash=S.blocks.some(b=>!b.del&&BLOCKS[b.type]&&start<blockEnd(b)&&b.start<nEnd);
-    if(clash){toast(repeat?'Upprepningen krockar med en annan period. Stäng av upprepningen eller ta bort den andra.':'Perioden krockar med en annan period');return;}
+    if(clash){toast(repeat?'Upprepningen krockar med ett annat block. Stäng av upprepningen eller ta bort det andra.':'Blocket krockar med ett annat block');return;}
     const g=restGuard(nb);
     if(g.tooShort.length&&!confirm('Rekommendationen är minst 6–8 veckor mellan chockfaser för samma muskelgrupp, eftersom senor och leder läker långsammare än muskler. Här blir det för kort för: '+g.tooShort.join(', ')+'. Lägga till ändå?'))return;
     S.blocks.push(nb);persist();queueSync();render();
-    toast(g.okButShort.length?'Period inplanerad. 6 veckors vila räcker, men 8 är bäst ('+g.okButShort.join(', ')+')':'Period inplanerad');
+    toast(g.okButShort.length?'Block inplanerat. 6 veckors vila räcker, men 8 är bäst ('+g.okButShort.join(', ')+')':'Block inplanerat');
   }
   else if(a==='brep'){
     const b=S.blocks.find(x=>x.id===t.dataset.id);
@@ -1252,6 +1442,13 @@ document.addEventListener('click',e=>{
   }
   else if(a==='notiftest'){if(!notifOn()){toast('Slå på notiser först');return;}swPost({type:'rest',end:Date.now()+5000,body:'Testnotis – så här ser vilan ut',force:true});toast('Testnotis om 5 sekunder. Lås gärna skärmen.');}
   else if(a==='roff+'||a==='roff-'){cfg.restOff=Math.max(-60,Math.min(120,(cfg.restOff||0)+(a==='roff+'?15:-15)));saveCfg();render();}
+  else if(a==='bodyadd'){
+    const g=id=>{const v=parseNum($('#'+id).value);return v===''?null:v;};
+    const e={id:uid(),date:$('#bdt').value||today(),w:g('bw'),smm:g('bsmm'),fat:g('bfat'),pbf:g('bpbf'),visc:g('bvisc'),bmr:g('bbmr'),updatedAt:Date.now()};
+    if(!['w','smm','fat','pbf','visc','bmr'].some(k=>e[k]!==null)){toast('Fyll i minst ett värde');return;}
+    S.body.push(e);persist();queueSync();render();toast('Mätning sparad');
+  }
+  else if(a==='bodydel'){const e=S.body.find(x=>x.id===t.dataset.id);if(e&&confirm('Ta bort mätningen?')){e.del=true;e.updatedAt=Date.now();persist();queueSync();render();}}
   else if(a==='savetok'){cfg.token=$('#tok').value.trim();cfg.status='';saveCfg();syncNow(true);}
   else if(a==='sync')syncNow(true);
   else if(a==='export')exportJSON();
@@ -1262,12 +1459,22 @@ document.addEventListener('click',e=>{
 document.addEventListener('change',e=>{
   const t=e.target;
   if(t.dataset.act==='exsel'){ui.ex=t.value;render();}
+  else if(t.dataset.act==='bmsel'){ui.bm=t.value;render();}
   else if(t.dataset.act==='jump'){if(t.value){ui.date=t.value;render();}}
   else if(t.dataset.act==='plansel'){
     const s=S.sessions['d'+ui.date];
     if(s&&hasDone(s)&&s.plan!==t.value){toast('Passet har loggade set – ta bort dem först');render();return;}
     const ns=getSess(true);ns.plan=t.value;ns.sets={};initSets(ns);touch(ns);render();toast('Pass bytt');
   }
+  else if(t.dataset.bf){
+    const f=ui.bf=ui.bf||{type:'multi',groups:[],len:4,pause:2},k=t.dataset.bf;
+    if(k==='type')f.type=t.value;
+    else if(k==='grp'){f.groups=t.checked?f.groups.concat([t.value]).slice(-2):f.groups.filter(x=>x!==t.value);f.len=(f.groups.length===1&&f.groups[0]==='legs')?3:4;}
+    else if(k==='len')f.len=+t.value;
+    else if(k==='pause')f.pause=+t.value;
+    render();
+  }
+  else if(t.dataset.pf){const k=t.dataset.pf;if(k==='auto')S.prefs.auto=t.checked;else{const v=parseNum(t.value);S.prefs.maint=v===''?0:v;}S.prefs.at=Date.now();persist();queueSync();refreshMeters();}
   else if(t.dataset.tg){const [k,f]=t.dataset.tg.split('.');const v=parseNum(t.value);if(v!==''&&v>0){S.targets[k][f]=v;S.targets.at=Date.now();persist();queueSync();refreshMeters();}}
   else if(t.id==='imp'&&t.files[0])importJSON(t.files[0]);
   else if(t.dataset.kb&&typeof kostChange==='function')kostChange(t);
@@ -1342,7 +1549,7 @@ function mergeState(a,b){
   });
   o.food=mergeDays(a.food,b.food);o.cardio=mergeDays(a.cardio,b.cardio);
   o.favs=mergeById(a.favs,b.favs);o.blocks=mergeById(a.blocks,b.blocks);
-  o.cfoods=mergeById(a.cfoods,b.cfoods);o.meals=mergeById(a.meals,b.meals);o.units=mergeById(a.units,b.units);
+  o.cfoods=mergeById(a.cfoods,b.cfoods);o.meals=mergeById(a.meals,b.meals);o.units=mergeById(a.units,b.units);o.body=mergeById(a.body,b.body);o.prefs=((b.prefs.at||0)>(a.prefs.at||0))?b.prefs:a.prefs;
   o.targets=(b.targets.at||0)>(a.targets.at||0)?b.targets:a.targets;
   return o;
 }
